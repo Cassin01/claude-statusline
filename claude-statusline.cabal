@@ -21,10 +21,14 @@ library
   hs-source-dirs:   src
   exposed-modules:
     Statusline.Ansi
+    Statusline.Cache
     Statusline.Humanize
     Statusline.Input
+    Statusline.Moon
+    Statusline.News
     Statusline.Render
     Statusline.Shell
+    Statusline.Ticker
     Statusline.Transcript
     Statusline.Truncate
   build-depends:
@@ -47,6 +51,7 @@ executable claude-statusline
     , bytestring
     , claude-statusline
     , text
+    , time
 
 test-suite spec
   import:             warnings
@@ -54,16 +59,21 @@ test-suite spec
   hs-source-dirs:     test
   main-is:            Spec.hs
   other-modules:
+    Statusline.CacheSpec
     Statusline.HumanizeSpec
     Statusline.InputSpec
+    Statusline.MoonSpec
+    Statusline.NewsSpec
     Statusline.RenderSpec
     Statusline.ShellSpec
+    Statusline.TickerSpec
     Statusline.TranscriptSpec
     Statusline.TruncateSpec
   build-depends:
     , base
     , bytestring
     , claude-statusline
+    , directory
     , hspec
     , process
     , temporary

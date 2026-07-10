@@ -16,6 +16,8 @@ defEnv =
     , envBranch = Nothing
     , envTokens = mempty
     , envTimeZone = utc
+    , envNow = 0
+    , envTicker = []
     }
 
 stripAnsi :: Text -> Text
@@ -113,6 +115,27 @@ spec = describe "render" $ do
           r0 = rowAt 0 (render defEnv emptyInput {siCwd = Just long})
       T.length r0 `shouldSatisfy` (<= 40)
       r0 `shouldSatisfy` T.isPrefixOf "…/"
+
+  context "ticker (row 4)" $ do
+    -- with emptyInput rows 2 and 3 are absent, so the ticker lands at index 1
+    it "items joined with a dot separator" $
+      rowAt 1 (render defEnv {envTicker = ["☀️ +31°C", "🌕 100%"]} emptyInput)
+        `shouldBe` "☀️ +31°C · 🌕 100%"
+    it "no ticker items -> no row" $
+      rowAt 1 (render defEnv emptyInput) `shouldBe` ""
+    it "blank items are dropped" $
+      rowAt 1 (render defEnv {envTicker = ["", "🌕 100%"]} emptyInput) `shouldBe` "🌕 100%"
+    it "row is dim" $
+      render defEnv {envTicker = ["🌕 100%"]} emptyInput
+        `shouldSatisfy` T.isInfixOf "\ESC[2m🌕 100%"
+    it "over-long content is windowed to the columns" $ do
+      let long = [T.replicate 200 "x"]
+          r = rowAt 1 (render defEnv {envTicker = long} emptyInput)
+      T.length r `shouldBe` 80
+    it "epoch advances the window" $ do
+      let long = [T.replicate 100 "a" <> T.replicate 100 "b"]
+          at n = rowAt 1 (render defEnv {envTicker = long, envNow = n} emptyInput)
+      at 0 `shouldNotBe` at 100
 
   context "composition across rows" $ do
     let full =

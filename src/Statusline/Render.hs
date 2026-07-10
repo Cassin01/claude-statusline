@@ -12,6 +12,7 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Statusline.Ansi
 import Statusline.Humanize (hum)
 import Statusline.Input (StatusInput (..), validEpoch)
+import Statusline.Ticker (marquee)
 import Statusline.Transcript (TokenTotals (..), totalTokens)
 import Statusline.Truncate (midEllipsis, pathHeadTrim)
 
@@ -23,6 +24,10 @@ data Env = Env
   , envBranch :: Maybe Text
   , envTokens :: TokenTotals
   , envTimeZone :: TimeZone
+  , envNow :: Integer
+  -- ^ Current epoch second, driving the row-4 marquee offset.
+  , envTicker :: [Text]
+  -- ^ Ambient items (weather, moon phase, news) for row 4.
   }
 
 -- | Full status line: rows joined by newlines, empty rows skipped, and no
@@ -30,7 +35,7 @@ data Env = Env
 render :: Env -> StatusInput -> Text
 render env input =
   T.intercalate "\n" . filter (not . T.null) $
-    [row1 env input, row2 env input, row3 env input]
+    [row1 env input, row2 env input, row3 env input, row4 env]
 
 effectiveCwd :: StatusInput -> Text
 effectiveCwd input = case siCwd input of
@@ -98,6 +103,13 @@ row3 env input = fromMaybe "" $ do
   let local = utcToLocalTime (envTimeZone env) (posixSecondsToUTCTime (fromInteger secs))
       hhmm = T.pack (formatTime defaultTimeLocale "%H:%M" local)
   pure (withColor cyan ("5h resets at " <> hhmm))
+
+-- row 4: ambient ticker scrolling right to left when wider than the terminal.
+-- Colored after windowing so the scroll never slices an ANSI sequence.
+row4 :: Env -> Text
+row4 env = case filter (not . T.null) (envTicker env) of
+  [] -> ""
+  items -> withColor dim (marquee (envColumns env) (envNow env) (T.intercalate " · " items))
 
 -- percentages arrive as e.g. 42.7 and are truncated like bash ${x%.*}
 asPct :: RealFrac a => a -> Text
