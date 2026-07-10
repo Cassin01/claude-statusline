@@ -33,3 +33,7 @@ spec = describe "moonPhase" $ do
     moonPhase 0 `shouldSatisfy` wellFormed
   it "far-future epoch still well-formed" $
     moonPhase 9999999999 `shouldSatisfy` wellFormed
+  it "moonEmoji matches the emoji part of moonPhase" $ do
+    moonEmoji newMoon `shouldBe` "\x1F311"
+    moonEmoji (newMoon + synodic `div` 2) `shouldBe` "\x1F315"
+    moonEmoji (newMoon + synodic `div` 4) `shouldBe` "\x1F313"

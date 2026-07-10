@@ -43,6 +43,7 @@ charCells c
   where
     wide =
       (c >= '\x1100' && c <= '\x115F')
+        || (c >= '\x26C4' && c <= '\x26C8')
         || (c >= '\x2E80' && c <= '\xA4CF')
         || (c >= '\xAC00' && c <= '\xD7A3')
         || (c >= '\xF900' && c <= '\xFAFF')

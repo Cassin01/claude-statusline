@@ -11,6 +11,12 @@ spec = do
     it "CJK counts 2 per char" $ displayWidth "日本語" `shouldBe` 6
     it "emoji counts 2" $ displayWidth "\x1F315" `shouldBe` 2
     it "variation selector and ZWJ count 0" $ displayWidth "\x2600\xFE0F\x200D" `shouldBe` 1
+    it "emoji-presentation BMP weather symbols count 2" $ do
+      displayWidth "⛅" `shouldBe` 2
+      displayWidth "⛈" `shouldBe` 2
+    it "text-presentation weather symbols count 1" $ do
+      displayWidth "☀" `shouldBe` 1
+      displayWidth "☁" `shouldBe` 1
     it "empty is 0" $ displayWidth "" `shouldBe` 0
 
   describe "takeCells" $ do

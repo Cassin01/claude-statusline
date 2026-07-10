@@ -31,6 +31,7 @@ library
     Statusline.Ticker
     Statusline.Transcript
     Statusline.Truncate
+    Statusline.Weather
   build-depends:
     , aeson       >=2.2
     , base        >=4.20 && <5
@@ -69,6 +70,7 @@ test-suite spec
     Statusline.TickerSpec
     Statusline.TranscriptSpec
     Statusline.TruncateSpec
+    Statusline.WeatherSpec
   build-depends:
     , base
     , bytestring
