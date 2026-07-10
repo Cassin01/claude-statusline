@@ -1,0 +1,72 @@
+cabal-version:      3.0
+name:               claude-statusline
+version:            0.1.0.0
+synopsis:           Claude Code status line renderer
+description:        Renders a three-row status line for Claude Code from the
+                    statusLine JSON protocol on stdin.
+license:            MIT
+license-file:       LICENSE
+author:             Cassin01
+maintainer:         Cassin01
+build-type:         Simple
+extra-doc-files:    README.md
+
+common warnings
+  ghc-options:        -Wall -Wcompat
+  default-language:   GHC2021
+  default-extensions: OverloadedStrings
+
+library
+  import:           warnings
+  hs-source-dirs:   src
+  exposed-modules:
+    Statusline.Ansi
+    Statusline.Humanize
+    Statusline.Input
+    Statusline.Render
+    Statusline.Shell
+    Statusline.Transcript
+    Statusline.Truncate
+  build-depends:
+    , aeson       >=2.2
+    , base        >=4.20 && <5
+    , bytestring
+    , directory
+    , process
+    , scientific
+    , text
+    , time
+
+executable claude-statusline
+  import:           warnings
+  hs-source-dirs:   app
+  main-is:          Main.hs
+  ghc-options:      -O2
+  build-depends:
+    , base
+    , bytestring
+    , claude-statusline
+    , text
+
+test-suite spec
+  import:             warnings
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test
+  main-is:            Spec.hs
+  other-modules:
+    Statusline.HumanizeSpec
+    Statusline.InputSpec
+    Statusline.RenderSpec
+    Statusline.ShellSpec
+    Statusline.TranscriptSpec
+    Statusline.TruncateSpec
+  build-depends:
+    , base
+    , bytestring
+    , claude-statusline
+    , hspec
+    , process
+    , temporary
+    , text
+    , time
+  build-tool-depends: hspec-discover:hspec-discover
