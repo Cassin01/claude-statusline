@@ -29,6 +29,7 @@ library
     Statusline.Json
     Statusline.Moon
     Statusline.News
+    Statusline.RateSample
     Statusline.Render
     Statusline.Shell
     Statusline.Ticker
@@ -70,6 +71,7 @@ test-suite spec
     Statusline.InputSpec
     Statusline.MoonSpec
     Statusline.NewsSpec
+    Statusline.RateSampleSpec
     Statusline.RenderSpec
     Statusline.ShellSpec
     Statusline.TickerSpec
