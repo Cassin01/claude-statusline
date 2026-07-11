@@ -5,7 +5,7 @@ A four-row status line for [Claude Code](https://claude.com/claude-code), writte
 ```
 ⎇ feature/branch ~/ghq/github.com/you/repo
 5h 10% 7d 5% ▣ 30% Σ 450 ↑350 ↓100
-5h resets at 09:30 · 100% at ~08:45
+5h resets at 09:30 100% at ~08:45
 金☀34°🌖 土☀35°🌗 日⛅33°🌗 月🌧29°🌗 火🌧28°🌘 水⛅31°🌘 木☀33°🌑 · ニュース見出し…
 ```
 

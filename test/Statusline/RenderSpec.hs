@@ -93,7 +93,7 @@ spec = describe "render" $ do
         rising = [Sample 0 40, Sample 600 50]
     it "prediction before the reset is appended" $
       rowAt 2 (render defEnv {envSamples = rising} resetInput)
-        `shouldBe` "5h resets at 09:30 · 100% at ~01:00"
+        `shouldBe` "5h resets at 09:30 100% at ~01:00"
     it "prediction segment is yellow" $
       render defEnv {envSamples = rising} resetInput
         `shouldSatisfy` T.isInfixOf "\ESC[33m100% at ~01:00"
