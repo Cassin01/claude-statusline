@@ -60,6 +60,37 @@ changes), so without a periodic refresh the ticker freezes whenever the
 session is idle. `refreshInterval: 1` re-runs it every second, which is what
 drives the scroll.
 
+## Configuration
+
+Optional, at `~/.config/claude-statusline/config.json` (XDG config dir). The
+file is re-read on every refresh, so edits apply within a second. Every key is
+optional; a missing file, malformed JSON, or a wrong-typed key silently falls
+back to the defaults shown below — the status line never fails over its
+config. Validate with `jq . config.json` if something looks off.
+
+```json
+{
+  "feeds": [
+    { "name": "nhk",        "label": "NHK: ",  "url": "https://www.nhk.or.jp/rss/news/cat0.xml" },
+    { "name": "hackernews", "label": "HN: ",   "url": "https://hnrss.org/frontpage" },
+    { "name": "zenn",       "label": "Zenn: ", "url": "https://zenn.dev/feed" }
+  ],
+  "headlineCount": 3,
+  "rows": { "git": true, "usage": true, "reset": true, "ticker": true },
+  "ttl": { "location": 86400, "forecast": 10800, "news": 1200 }
+}
+```
+
+- **feeds** — RSS sources for row 4. `name` and `url` are required (invalid
+  items are dropped); `label` defaults to `"<name>: "`. An explicit `[]`
+  disables headlines. Feeds must expose RSS `<item>` elements with `<title>`
+  (and ideally `<link>`).
+- **headlineCount** — headlines per feed (clamped to 0–20).
+- **rows** — enable/disable each row. Disabling `ticker` also stops all
+  ambient network fetches.
+- **ttl** — cache lifetimes in seconds for the location lookup, the forecast,
+  and each news feed (minimum 60).
+
 ## Development
 
 ```sh

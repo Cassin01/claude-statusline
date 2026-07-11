@@ -23,6 +23,7 @@ library
     Statusline.Ambient
     Statusline.Ansi
     Statusline.Cache
+    Statusline.Config
     Statusline.Humanize
     Statusline.Input
     Statusline.Json
@@ -64,6 +65,7 @@ test-suite spec
   other-modules:
     Statusline.AmbientSpec
     Statusline.CacheSpec
+    Statusline.ConfigSpec
     Statusline.HumanizeSpec
     Statusline.InputSpec
     Statusline.MoonSpec
