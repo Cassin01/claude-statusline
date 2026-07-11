@@ -4,6 +4,7 @@ module Statusline.Render
   , effectiveCwd
   ) where
 
+import Data.List (intersperse)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -12,7 +13,7 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Statusline.Ansi
 import Statusline.Humanize (hum)
 import Statusline.Input (StatusInput (..), validEpoch)
-import Statusline.Ticker (marquee)
+import Statusline.Ticker (Span (..), marqueeSpans)
 import Statusline.Transcript (TokenTotals (..), totalTokens)
 import Statusline.Truncate (midEllipsis, pathHeadTrim)
 
@@ -26,8 +27,9 @@ data Env = Env
   , envTimeZone :: TimeZone
   , envNow :: Integer
   -- ^ Current epoch second, driving the row-4 marquee offset.
-  , envTicker :: [Text]
-  -- ^ Ambient items (weather, moon phase, news) for row 4.
+  , envTicker :: [Span]
+  -- ^ Ambient items (weather, moon phase, news) for row 4, each optionally
+  -- linking to a URL.
   }
 
 -- | Full status line: rows joined by newlines, empty rows skipped, and no
@@ -105,11 +107,18 @@ row3 env input = fromMaybe "" $ do
   pure (withColor cyan ("5h resets at " <> hhmm))
 
 -- row 4: ambient ticker scrolling right to left when wider than the terminal.
--- Colored after windowing so the scroll never slices an ANSI sequence.
+-- Color and OSC 8 links are applied after windowing so the scroll never
+-- slices an escape sequence; each visible run of a linked item gets its own
+-- hyperlink wrapper.
 row4 :: Env -> Text
-row4 env = case filter (not . T.null) (envTicker env) of
+row4 env = case filter (not . T.null . spanText) (envTicker env) of
   [] -> ""
-  items -> withColor dim (marquee (envColumns env) (envNow env) (T.intercalate " · " items))
+  items ->
+    withColor dim . foldMap renderSpan $
+      marqueeSpans (envColumns env) (envNow env) (intersperse gap items)
+  where
+    gap = Span " · " Nothing
+    renderSpan (Span t url) = maybe t (`hyperlink` t) url
 
 -- percentages arrive as e.g. 42.7 and are truncated like bash ${x%.*}
 asPct :: RealFrac a => a -> Text

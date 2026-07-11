@@ -1,39 +1,61 @@
 module Statusline.Ticker
-  ( marquee
+  ( Span (..)
+  , marqueeSpans
   , displayWidth
-  , takeCells
   ) where
 
+import Data.Function (on)
+import Data.List (groupBy)
 import Data.Text (Text)
 import Data.Text qualified as T
 
+-- | A run of ticker text, optionally linked to a URL. The URL is carried as
+-- data (not as embedded escape sequences) so the marquee can slice content
+-- freely; the renderer turns it into an OSC 8 hyperlink after windowing.
+data Span = Span
+  { spanText :: Text
+  , spanUrl :: Maybe Text
+  }
+  deriving (Eq, Show)
+
+-- | One code point annotated with its owning span's URL, so link identity
+-- survives the scroll window and regroups afterwards.
+type Cell = (Char, Maybe Text)
+
 -- | Right-to-left ticker window. Content that fits is shown as-is; longer
 -- content advances one code point per second of the given epoch clock,
--- wrapping through a three-space gap. The window is clipped to the column
--- budget in display cells so wide (CJK/emoji) characters do not over-run.
-marquee :: Int -> Integer -> Text -> Text
-marquee cols epoch content
-  | cols <= 0 || T.null content = ""
-  | displayWidth content <= cols = content
-  | otherwise = takeCells cols (T.drop off looped <> T.take off looped)
+-- wrapping through a three-space gap (which carries no URL). The window is
+-- clipped to the column budget in display cells so wide (CJK/emoji)
+-- characters do not over-run, splitting spans at the window edges while
+-- preserving each character's URL.
+marqueeSpans :: Int -> Integer -> [Span] -> [Span]
+marqueeSpans cols epoch spans
+  | cols <= 0 || null cells = []
+  | cellsWidth cells <= cols = regroup cells
+  | otherwise = regroup (takeCells cols (drop off looped <> take off looped))
   where
-    looped = content <> "   "
-    off = fromIntegral (epoch `mod` fromIntegral (T.length looped))
+    cells = [(c, spanUrl s) | s <- spans, c <- T.unpack (spanText s)]
+    looped = cells <> map (,Nothing) "   "
+    off = fromIntegral (epoch `mod` fromIntegral (length looped))
 
 -- | Width in terminal cells: CJK and emoji count 2, joiners count 0.
 displayWidth :: Text -> Int
 displayWidth = T.foldl' (\acc c -> acc + charCells c) 0
 
+cellsWidth :: [Cell] -> Int
+cellsWidth = sum . map (charCells . fst)
+
 -- | Longest prefix whose display width fits within the cell budget.
-takeCells :: Int -> Text -> Text
-takeCells cols t = T.pack (go cols (T.unpack t))
+takeCells :: Int -> [Cell] -> [Cell]
+takeCells _ [] = []
+takeCells remaining (cell@(c, _) : cs)
+  | w <= remaining = cell : takeCells (remaining - w) cs
+  | otherwise = []
   where
-    go _ [] = []
-    go remaining (c : cs)
-      | w <= remaining = c : go (remaining - w) cs
-      | otherwise = []
-      where
-        w = charCells c
+    w = charCells c
+
+regroup :: [Cell] -> [Span]
+regroup cells = [Span (T.pack (map fst g)) url | g@((_, url) : _) <- groupBy ((==) `on` snd) cells]
 
 charCells :: Char -> Int
 charCells c
