@@ -19,7 +19,7 @@ A four-row status line for [Claude Code](https://claude.com/claude-code), writte
   span) or when the pace comfortably outlasts the window
 - **Row 4**: ambient ticker — a 7-day forecast (weekday · weather emoji · max
   temperature · moon phase per day) followed by the latest headlines from NHK,
-  Hacker News, and Zenn. Each headline is an OSC 8 hyperlink: Cmd+click
+  BBC, Hacker News, and Zenn. Each headline is an OSC 8 hyperlink: Cmd+click
   (macOS) or Ctrl+click opens the article in terminals that support hyperlinks
   (iTerm2, kitty, WezTerm, VS Code); others show plain text. Content wider
   than the terminal scrolls right-to-left, advancing one code point per
@@ -32,8 +32,9 @@ protocol on stdin and writes ANSI-colored rows to stdout.
 Row 4 never blocks on the network. The forecast chain is: [ipinfo.io](https://ipinfo.io)
 resolves the location from the caller's IP (cached 24 h), then
 [Open-Meteo](https://open-meteo.com) supplies the 7-day forecast for those
-coordinates (cached 3 h); the news feeds — NHK RSS, the Hacker News front
-page via [hnrss.org](https://hnrss.org), and [zenn.dev/feed](https://zenn.dev/feed)
+coordinates (cached 3 h); the news feeds — NHK RSS, [BBC News RSS](https://feeds.bbci.co.uk/news/rss.xml),
+the Hacker News front page via [hnrss.org](https://hnrss.org), and
+[zenn.dev/feed](https://zenn.dev/feed)
 — are each cached 20 min (three headlines per source); the moon phase is
 computed locally. All entries live in `~/.cache/claude-statusline/` (XDG
 cache), and a stale entry fires a detached background `curl` whose result
@@ -77,6 +78,7 @@ config. Validate with `jq . config.json` if something looks off.
 {
   "feeds": [
     { "name": "nhk",        "label": "NHK: ",  "url": "https://www.nhk.or.jp/rss/news/cat0.xml" },
+    { "name": "bbc",        "label": "BBC: ",  "url": "https://feeds.bbci.co.uk/news/rss.xml" },
     { "name": "hackernews", "label": "HN: ",   "url": "https://hnrss.org/frontpage" },
     { "name": "zenn",       "label": "Zenn: ", "url": "https://zenn.dev/feed" }
   ],

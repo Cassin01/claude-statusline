@@ -69,6 +69,7 @@ defaultConfig =
   Config
     { cfgFeeds =
         [ Feed "nhk" "NHK: " "https://www.nhk.or.jp/rss/news/cat0.xml"
+        , Feed "bbc" "BBC: " "https://feeds.bbci.co.uk/news/rss.xml"
         , Feed "hackernews" "HN: " "https://hnrss.org/frontpage"
         , Feed "zenn" "Zenn: " "https://zenn.dev/feed"
         ]
