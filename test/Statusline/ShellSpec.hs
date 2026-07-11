@@ -2,6 +2,7 @@ module Statusline.ShellSpec (spec) where
 
 import Data.Maybe (fromJust, isJust)
 import Data.Text qualified as T
+import Statusline.RateSample (Sample (..))
 import Statusline.Shell
 import Statusline.Transcript (TokenTotals (..))
 import System.IO.Temp (withSystemTempDirectory)
@@ -61,6 +62,25 @@ spec = do
 
     it "no transcript path -> mempty" $
       readTokens Nothing `shouldReturn` mempty
+
+  describe "rate sample store" $ do
+    it "write/read round-trips" $
+      withSystemTempDirectory "statusline" $ \dir -> do
+        let samples = [Sample 100 40, Sample 200 50.5]
+        writeRateSamples (Just dir) samples
+        readRateSamples (Just dir) `shouldReturn` samples
+    it "no cache dir -> read [] and write is a no-op" $ do
+      readRateSamples Nothing `shouldReturn` []
+      writeRateSamples Nothing [Sample 1 1]
+    it "missing store file -> []" $
+      withSystemTempDirectory "statusline" $ \dir ->
+        readRateSamples (Just dir) `shouldReturn` []
+    it "garbage lines are skipped" $
+      withSystemTempDirectory "statusline" $ \dir -> do
+        writeFile (dir <> "/rate5h") "garbage\n100 40\nx y\n"
+        readRateSamples (Just dir) `shouldReturn` [Sample 100 40]
+    it "write to a nonexistent dir does not throw" $
+      writeRateSamples (Just "/does/not/exist") [Sample 1 1]
 
   describe "columnsOr80" $ do
     it "parses COLUMNS" $ columnsOr80 (Just "120") `shouldBe` 120
