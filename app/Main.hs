@@ -7,6 +7,7 @@
 -- Rows, feeds, and cache TTLs are user-configurable; see Statusline.Config.
 module Main (main) where
 
+import Control.Monad (when)
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import Data.Text.Encoding (encodeUtf8)
@@ -15,8 +16,16 @@ import Statusline.Ambient (buildTicker)
 import Statusline.Cache (cacheDir, cachedFetch)
 import Statusline.Config
 import Statusline.Input (StatusInput (..), parseInput)
+import Statusline.RateSample (updateSamples)
 import Statusline.Render (Env (..), effectiveCwd, render)
-import Statusline.Shell (columnsOr80, gitBranch, readTokens, resolveTimeZone)
+import Statusline.Shell
+  ( columnsOr80
+  , gitBranch
+  , readRateSamples
+  , readTokens
+  , resolveTimeZone
+  , writeRateSamples
+  )
 import Statusline.Weather (openMeteoUrl, parseLocation)
 import System.Environment (lookupEnv)
 
@@ -31,6 +40,9 @@ main = do
   now <- round <$> getPOSIXTime
   cfg <- loadConfig
   cache <- cacheDir
+  samples0 <- readRateSamples cache
+  let samples = maybe samples0 (\p -> updateSamples now p samples0) (siFiveHour input)
+  when (samples /= samples0) (writeRateSamples cache samples)
   let ttl = cfgTtl cfg
       tickerOn = rowTicker (cfgRows cfg)
   -- a disabled ticker skips every ambient fetch, not just the rendering
@@ -58,5 +70,6 @@ main = do
           , envNow = now
           , envTicker = buildTicker (cfgHeadlineCount cfg) now forecast feeds
           , envRows = cfgRows cfg
+          , envSamples = samples
           }
   BS.putStr (encodeUtf8 (render env input))

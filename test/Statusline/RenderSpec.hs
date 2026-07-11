@@ -5,6 +5,7 @@ import Data.Text qualified as T
 import Data.Time (utc)
 import Statusline.Config (Rows (..), defaultRows)
 import Statusline.Input
+import Statusline.RateSample (Sample (..))
 import Statusline.Render
 import Statusline.Ticker (Span (..), plain)
 import Statusline.Transcript (TokenTotals (..))
@@ -21,6 +22,7 @@ defEnv =
     , envNow = 0
     , envTicker = []
     , envRows = defaultRows
+    , envSamples = []
     }
 
 stripAnsi :: Text -> Text
@@ -83,6 +85,30 @@ spec = describe "render" $ do
     it "far-future epoch still formats HH:MM" $
       rowAt 1 (render defEnv emptyInput {siResetsAt = Just 9999999999})
         `shouldSatisfy` T.isPrefixOf "5h resets at "
+
+  context "5h exhaustion prediction (row 3)" $ do
+    -- 1735723800 = 2025-01-01 09:30:00 UTC; sample epochs near 0 predict
+    -- exhaustion in 1970, far before the reset
+    let resetInput = emptyInput {siFiveHour = Just 50, siResetsAt = Just 1735723800}
+        rising = [Sample 0 40, Sample 600 50]
+    it "prediction before the reset is appended" $
+      rowAt 2 (render defEnv {envSamples = rising} resetInput)
+        `shouldBe` "5h resets at 09:30 · 100% at ~01:00"
+    it "prediction segment is yellow" $
+      render defEnv {envSamples = rising} resetInput
+        `shouldSatisfy` T.isInfixOf "\ESC[33m100% at ~01:00"
+    it "prediction at or past the reset shows the reset alone" $ do
+      let late = [Sample 1735723000 40, Sample 1735723600 50]
+      rowAt 2 (render defEnv {envSamples = late} resetInput)
+        `shouldBe` "5h resets at 09:30"
+    it "no samples -> reset alone" $
+      rowAt 2 (render defEnv resetInput) `shouldBe` "5h resets at 09:30"
+    it "flat samples -> reset alone" $
+      rowAt 2 (render defEnv {envSamples = [Sample 0 40, Sample 600 40]} resetInput)
+        `shouldBe` "5h resets at 09:30"
+    it "samples without resets_at -> no row 3" $
+      rowAt 2 (render defEnv {envSamples = rising} emptyInput {siFiveHour = Just 50})
+        `shouldBe` ""
 
   context "session tokens" $ do
     it "tokens summed, cache-read excluded" $

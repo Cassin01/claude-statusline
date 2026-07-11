@@ -14,6 +14,7 @@ import Statusline.Ansi
 import Statusline.Config (Rows (..))
 import Statusline.Humanize (hum)
 import Statusline.Input (StatusInput (..), validEpoch)
+import Statusline.RateSample (Sample, predictExhaustion)
 import Statusline.Ticker (Span (..), marqueeSpans, plain)
 import Statusline.Transcript (TokenTotals (..), totalTokens)
 import Statusline.Truncate (midEllipsis, pathHeadTrim)
@@ -33,6 +34,9 @@ data Env = Env
   -- linking to a URL.
   , envRows :: Rows
   -- ^ Which rows the user has enabled.
+  , envSamples :: [Sample]
+  -- ^ Retained 5h burn-rate samples, newest reading included, for the row-3
+  -- exhaustion prediction.
   }
 
 -- | Full status line: rows joined by newlines, empty rows skipped, and no
@@ -107,13 +111,24 @@ tokensSeg toks@(TokenTotals tin tout)
           <> withColor dim ("↑" <> hum tin <> " ↓" <> hum tout)
   | otherwise = Nothing
 
--- row 3: 5h rate-limit reset clock time in the resolved local zone
+-- row 3: 5h rate-limit reset clock time in the resolved local zone, plus the
+-- predicted 100% instant when the current burn rate reaches it before the
+-- reset (a prediction at or past the reset is moot — the window rolls over
+-- first).
 row3 :: Env -> StatusInput -> Text
 row3 env input = fromMaybe "" $ do
   secs <- validEpoch =<< siResetsAt input
-  let local = utcToLocalTime (envTimeZone env) (posixSecondsToUTCTime (fromInteger secs))
-      hhmm = T.pack (formatTime defaultTimeLocale "%H:%M" local)
-  pure (withColor cyan ("5h resets at " <> hhmm))
+  pure (withColor cyan ("5h resets at " <> clock env secs) <> exhaustSeg secs)
+  where
+    exhaustSeg resetAt = case predictExhaustion (envSamples env) of
+      Just t | t < resetAt -> " · " <> withColor yellow ("100% at ~" <> clock env t)
+      _ -> ""
+
+clock :: Env -> Integer -> Text
+clock env secs =
+  T.pack (formatTime defaultTimeLocale "%H:%M" local)
+  where
+    local = utcToLocalTime (envTimeZone env) (posixSecondsToUTCTime (fromInteger secs))
 
 -- row 4: ambient ticker scrolling right to left when wider than the terminal.
 -- The row owner scrubs span text of controls and bidi overrides once, so no
