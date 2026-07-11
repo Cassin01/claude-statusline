@@ -18,22 +18,27 @@ item i = "<item><title>t" <> T.pack (show i) <> "</title></item>"
 spec :: Spec
 spec = describe "buildTicker" $ do
   it "leads with the week line when the forecast parses" $ do
-    let ticker = buildTicker 0 (Just sampleForecast) []
+    let ticker = buildTicker 3 0 (Just sampleForecast) []
     map spanUrl ticker `shouldBe` [Nothing]
     spanText (head ticker) `shouldSatisfy` T.isPrefixOf "金☀30°"
   it "no forecast -> today's moon phase alone" $
-    buildTicker 0 Nothing [] `shouldBe` [plain (moonPhase 0)]
+    buildTicker 3 0 Nothing [] `shouldBe` [plain (moonPhase 0)]
   it "malformed forecast -> moon phase fallback" $
-    buildTicker 0 (Just "not json") [] `shouldBe` [plain (moonPhase 0)]
+    buildTicker 3 0 (Just "not json") [] `shouldBe` [plain (moonPhase 0)]
   it "labels each headline and keeps its link" $
-    buildTicker 0 Nothing [("HN: ", Just "<item><title>t</title><link>https://e.com/a</link></item>")]
+    buildTicker 3 0 Nothing [("HN: ", Just "<item><title>t</title><link>https://e.com/a</link></item>")]
       `shouldBe` [plain (moonPhase 0), Span "HN: t" (Just "https://e.com/a")]
   it "feeds contribute in order" $
-    map spanText (buildTicker 0 Nothing [("NHK: ", Just (item 1)), ("HN: ", Just (item 2))])
+    map spanText (buildTicker 3 0 Nothing [("NHK: ", Just (item 1)), ("HN: ", Just (item 2))])
       `shouldBe` [moonPhase 0, "NHK: t1", "HN: t2"]
-  it "caps each feed at three headlines" $
-    map spanText (drop 1 (buildTicker 0 Nothing [("HN: ", Just (T.concat (map item [1 .. 5])))]))
+  it "caps each feed at the given headline count" $
+    map spanText (drop 1 (buildTicker 3 0 Nothing [("HN: ", Just (T.concat (map item [1 .. 5])))]))
       `shouldBe` ["HN: t1", "HN: t2", "HN: t3"]
+  it "headline count 1 keeps only the first item per feed" $
+    map spanText (drop 1 (buildTicker 1 0 Nothing [("HN: ", Just (T.concat (map item [1 .. 5])))]))
+      `shouldBe` ["HN: t1"]
+  it "headline count 0 drops all headlines" $
+    buildTicker 0 0 Nothing [("HN: ", Just (item 1))] `shouldBe` [plain (moonPhase 0)]
   it "missing and malformed feeds contribute nothing" $
-    buildTicker 0 Nothing [("NHK: ", Nothing), ("HN: ", Just "not xml")]
+    buildTicker 3 0 Nothing [("NHK: ", Nothing), ("HN: ", Just "not xml")]
       `shouldBe` [plain (moonPhase 0)]

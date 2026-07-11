@@ -3,6 +3,7 @@ module Statusline.RenderSpec (spec) where
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (utc)
+import Statusline.Config (Rows (..), defaultRows)
 import Statusline.Input
 import Statusline.Render
 import Statusline.Ticker (Span (..), plain)
@@ -19,6 +20,7 @@ defEnv =
     , envTimeZone = utc
     , envNow = 0
     , envTicker = []
+    , envRows = defaultRows
     }
 
 stripAnsi :: Text -> Text
@@ -176,6 +178,29 @@ spec = describe "render" $ do
       let item = Span "t" (Just "https://e.com/日")
       render defEnv {envTicker = [item]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC]8;;https://e.com/%E6%97%A5\a"
+
+  context "row toggles (Env rows)" $ do
+    let plainInput = emptyInput {siCwd = Just "/repo", siFiveHour = Just 10}
+    it "git row off -> path row absent" $
+      rowAt 0 (render defEnv {envRows = defaultRows {rowGit = False}} plainInput)
+        `shouldBe` "5h 10%"
+    it "usage row off -> limits absent" $
+      render defEnv {envRows = defaultRows {rowUsage = False}} plainInput
+        `shouldBe` "\ESC[2m/repo\ESC[0m"
+    it "reset row off -> reset time absent" $ do
+      let resetInput = plainInput {siResetsAt = Just 1735723800}
+      render defEnv {envRows = defaultRows {rowReset = False}} resetInput
+        `shouldSatisfy` (not . T.isInfixOf "resets at")
+    it "ticker row off -> ticker absent despite items" $
+      render
+        defEnv {envRows = defaultRows {rowTicker = False}, envTicker = [plain "🌕 100%"]}
+        emptyInput
+        `shouldSatisfy` (not . T.isInfixOf "🌕")
+    it "all rows off -> empty output" $
+      render
+        defEnv {envRows = Rows False False False False, envTicker = [plain "🌕 100%"]}
+        plainInput
+        `shouldBe` ""
 
   context "composition across rows" $ do
     let full =

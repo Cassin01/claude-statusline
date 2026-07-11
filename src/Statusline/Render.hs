@@ -11,6 +11,7 @@ import Data.Text qualified as T
 import Data.Time (TimeZone, defaultTimeLocale, formatTime, utcToLocalTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Statusline.Ansi
+import Statusline.Config (Rows (..))
 import Statusline.Humanize (hum)
 import Statusline.Input (StatusInput (..), validEpoch)
 import Statusline.Ticker (Span (..), marqueeSpans, plain)
@@ -30,6 +31,8 @@ data Env = Env
   , envTicker :: [Span]
   -- ^ Ambient items (weather, moon phase, news) for row 4, each optionally
   -- linking to a URL.
+  , envRows :: Rows
+  -- ^ Which rows the user has enabled.
   }
 
 -- | Full status line: rows joined by newlines, empty rows skipped, and no
@@ -37,7 +40,13 @@ data Env = Env
 render :: Env -> StatusInput -> Text
 render env input =
   T.intercalate "\n" . filter (not . T.null) $
-    [row1 env input, row2 env input, row3 env input, row4 env]
+    [ gate rowGit (row1 env input)
+    , gate rowUsage (row2 env input)
+    , gate rowReset (row3 env input)
+    , gate rowTicker (row4 env)
+    ]
+  where
+    gate enabled row = if enabled (envRows env) then row else ""
 
 effectiveCwd :: StatusInput -> Text
 effectiveCwd input = case siCwd input of

@@ -3,6 +3,7 @@ module Statusline.Json
   ( path
   , asText
   , asNumber
+  , asBool
   , asArray
   , asObject
   ) where
@@ -26,6 +27,10 @@ asText _ = Nothing
 asNumber :: Value -> Maybe Scientific
 asNumber (Number n) = Just n
 asNumber _ = Nothing
+
+asBool :: Value -> Maybe Bool
+asBool (Bool b) = Just b
+asBool _ = Nothing
 
 asArray :: Value -> Maybe [Value]
 asArray (Array xs) = Just (toList xs)
