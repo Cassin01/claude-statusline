@@ -29,7 +29,7 @@ spec = do
       parseLocation "not json" `shouldBe` Nothing
     it "no comma -> Nothing" $
       parseLocation "{\"loc\":\"35.68\"}" `shouldBe` Nothing
-    it "non-numeric parts rejected (guards the curl command line)" $ do
+    it "non-numeric parts rejected (guards the Open-Meteo URL)" $ do
       parseLocation "{\"loc\":\"tokyo,japan\"}" `shouldBe` Nothing
       parseLocation "{\"loc\":\"35.68'; rm -rf /,139.69\"}" `shouldBe` Nothing
     it "empty part -> Nothing" $

@@ -3,7 +3,8 @@
 -- stale cache only triggers a fire-and-forget curl that lands for a later
 -- invocation.
 module Statusline.Cache
-  ( cachedFetch
+  ( cacheDir
+  , cachedFetch
   , readCached
   ) where
 
@@ -24,13 +25,20 @@ import System.Directory
   )
 import System.Process
 
--- | Cached content for the named entry (under the XDG cache dir), refreshing
--- it in the background when older than the TTL. Nothing when the cache is
--- empty or unreadable.
-cachedFetch :: String -> Int -> String -> IO (Maybe Text)
-cachedFetch name ttlSecs url = handle (\(_ :: IOException) -> pure Nothing) $ do
+-- | Our XDG cache dir, created if missing; resolve once per invocation and
+-- pass to every 'cachedFetch'. Nothing when it cannot be created.
+cacheDir :: IO (Maybe FilePath)
+cacheDir = handle (\(_ :: IOException) -> pure Nothing) $ do
   dir <- getXdgDirectory XdgCache "claude-statusline"
   createDirectoryIfMissing True dir
+  pure (Just dir)
+
+-- | Cached content for the named entry under the given cache dir, refreshing
+-- it in the background when older than the TTL. Nothing when the cache is
+-- unavailable, empty, or unreadable.
+cachedFetch :: Maybe FilePath -> String -> Int -> String -> IO (Maybe Text)
+cachedFetch Nothing _ _ _ = pure Nothing
+cachedFetch (Just dir) name ttlSecs url = handle (\(_ :: IOException) -> pure Nothing) $ do
   let path = dir <> "/" <> name
   (content, refresh) <- readCached path ttlSecs
   when refresh (spawnCurl path url)
@@ -57,21 +65,18 @@ readCached path ttlSecs = handle (\(_ :: IOException) -> pure (Nothing, False)) 
 
 -- | Fire-and-forget fetch: write to a temp file and rename so readers never
 -- see a partial download. All streams detached; failures leave the cache as
--- it was and the next TTL expiry retries.
+-- it was and the next TTL expiry retries. The URL and paths ride as argv
+-- positional parameters, never spliced into the shell string, so no caller
+-- data can inject shell syntax.
 spawnCurl :: FilePath -> String -> IO ()
 spawnCurl path url = handle (\(_ :: IOException) -> pure ()) $ do
-  let tmp = path <> ".tmp"
-      cmd =
-        unwords
-          ["curl -fsSL --max-time 8", quote url, "-o", quote tmp, "&& mv", quote tmp, quote path]
+  let fetch = "curl -fsSL --max-time 8 \"$1\" -o \"$2\" && mv \"$2\" \"$3\""
   _ <-
     createProcess
-      (shell cmd)
+      (proc "sh" ["-c", fetch, "claude-statusline", url, path <> ".tmp", path])
         { std_in = NoStream
         , std_out = NoStream
         , std_err = NoStream
         , new_session = True
         }
   pure ()
-  where
-    quote s = "'" <> s <> "'"

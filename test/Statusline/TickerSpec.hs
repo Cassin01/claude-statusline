@@ -4,9 +4,6 @@ import Data.Text (Text)
 import Statusline.Ticker
 import Test.Hspec
 
-plain :: Text -> Span
-plain t = Span t Nothing
-
 linked :: Text -> Text -> Span
 linked t u = Span t (Just u)
 

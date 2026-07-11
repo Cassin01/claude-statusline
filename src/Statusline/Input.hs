@@ -6,13 +6,12 @@ module Statusline.Input
   ) where
 
 import Control.Applicative ((<|>))
-import Data.Aeson (Value (..), decodeStrict)
-import Data.Aeson.Key (Key)
-import Data.Aeson.KeyMap qualified as KM
+import Data.Aeson (Value, decodeStrict)
 import Data.ByteString (ByteString)
 import Data.Scientific (Scientific, isInteger)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Statusline.Json (asNumber, asText, path)
 
 -- | The subset of the Claude Code statusLine stdin protocol this tool reads.
 data StatusInput = StatusInput
@@ -44,19 +43,6 @@ fromValue v =
     , siResetsAt = asNumber =<< path ["rate_limits", "five_hour", "resets_at"] v
     , siTranscript = T.unpack <$> (asText =<< path ["transcript_path"] v)
     }
-
-path :: [Key] -> Value -> Maybe Value
-path [] v = Just v
-path (k : ks) (Object o) = path ks =<< KM.lookup k o
-path _ _ = Nothing
-
-asText :: Value -> Maybe Text
-asText (String t) = Just t
-asText _ = Nothing
-
-asNumber :: Value -> Maybe Scientific
-asNumber (Number n) = Just n
-asNumber _ = Nothing
 
 -- | resets_at is honoured only as a non-negative integer epoch, mirroring the
 -- bash digits-only guard.
