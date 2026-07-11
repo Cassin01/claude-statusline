@@ -2,7 +2,8 @@
 --   row 1: git branch (left) · cwd path (right)
 --   row 2: session (5h/7d) limits · context usage · session tokens
 --   row 3: local clock time the 5h rate-limit window resets
---   row 4: ambient ticker (week forecast with moon · news), right-to-left scroll
+--   row 4: ambient ticker (week forecast with moon · NHK/HN/Zenn headlines,
+--          each headline an OSC 8 link), right-to-left scroll
 module Main (main) where
 
 import Data.ByteString qualified as BS
@@ -12,9 +13,10 @@ import Data.Time.Clock.POSIX (getPOSIXTime)
 import Statusline.Cache (cachedFetch)
 import Statusline.Input (StatusInput (..), parseInput)
 import Statusline.Moon (moonPhase)
-import Statusline.News (newsTitles)
+import Statusline.News (NewsItem (..), newsItems)
 import Statusline.Render (Env (..), effectiveCwd, render)
 import Statusline.Shell (columnsOr80, gitBranch, readTokens, resolveTimeZone)
+import Statusline.Ticker (Span (..))
 import Statusline.Weather (forecastDays, openMeteoUrl, parseLocation, weekLine)
 import System.Environment (lookupEnv)
 
@@ -31,10 +33,19 @@ main = do
   forecast <- case parseLocation =<< loc of
     Just (lat, lon) -> cachedFetch "forecast" (3 * 3600) (openMeteoUrl lat lon)
     Nothing -> pure Nothing
-  news <- cachedFetch "news" (20 * 60) "https://www.nhk.or.jp/rss/news/cat0.xml"
+  nhk <- cachedFetch "news" (20 * 60) "https://www.nhk.or.jp/rss/news/cat0.xml"
+  hn <- cachedFetch "hackernews" (20 * 60) "https://hnrss.org/frontpage"
+  zenn <- cachedFetch "zenn" (20 * 60) "https://zenn.dev/feed"
   -- until the forecast cache warms up, fall back to today's moon phase alone
   let weekItem = weekLine . forecastDays =<< forecast
-      ticker = maybe [moonPhase now] pure weekItem <> maybe [] (take 3 . newsTitles) news
+      plain t = Span t Nothing
+      headlines label feed =
+        [Span (label <> niTitle i) (niLink i) | i <- take 3 (maybe [] newsItems feed)]
+      ticker =
+        maybe [plain (moonPhase now)] (pure . plain) weekItem
+          <> headlines "NHK: " nhk
+          <> headlines "HN: " hn
+          <> headlines "Zenn: " zenn
       env =
         Env
           { envColumns = columns

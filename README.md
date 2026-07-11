@@ -13,10 +13,13 @@ A four-row status line for [Claude Code](https://claude.com/claude-code), writte
 - **Row 2**: 5h/7d rate-limit usage · context window usage (blue < 50% ≤ yellow < 80% ≤ red) · cumulative session tokens (cache reads excluded)
 - **Row 3**: local clock time the 5h rate-limit window resets
 - **Row 4**: ambient ticker — a 7-day forecast (weekday · weather emoji · max
-  temperature · moon phase per day) followed by the latest NHK news headlines.
-  Content wider than the terminal scrolls right-to-left, advancing one code
-  point per wall-clock second (the status line only repaints when Claude Code
-  refreshes it).
+  temperature · moon phase per day) followed by the latest headlines from NHK,
+  Hacker News, and Zenn. Each headline is an OSC 8 hyperlink: Cmd+click
+  (macOS) or Ctrl+click opens the article in terminals that support hyperlinks
+  (iTerm2, kitty, WezTerm, VS Code); others show plain text. Content wider
+  than the terminal scrolls right-to-left, advancing one code point per
+  wall-clock second (the status line only repaints when Claude Code refreshes
+  it).
 
 Empty rows are skipped. The binary reads the Claude Code statusLine JSON
 protocol on stdin and writes ANSI-colored rows to stdout.
@@ -24,7 +27,9 @@ protocol on stdin and writes ANSI-colored rows to stdout.
 Row 4 never blocks on the network. The forecast chain is: [ipinfo.io](https://ipinfo.io)
 resolves the location from the caller's IP (cached 24 h), then
 [Open-Meteo](https://open-meteo.com) supplies the 7-day forecast for those
-coordinates (cached 3 h); NHK news is cached 20 min; the moon phase is
+coordinates (cached 3 h); the news feeds — NHK RSS, the Hacker News front
+page via [hnrss.org](https://hnrss.org), and [zenn.dev/feed](https://zenn.dev/feed)
+— are each cached 20 min (three headlines per source); the moon phase is
 computed locally. All entries live in `~/.cache/claude-statusline/` (XDG
 cache), and a stale entry fires a detached background `curl` whose result
 lands on a later invocation. Until the forecast cache warms up — or without
