@@ -121,7 +121,7 @@ row3 env input = fromMaybe "" $ do
   pure (withColor cyan ("5h resets at " <> clock env secs) <> exhaustSeg secs)
   where
     exhaustSeg resetAt = case predictExhaustion (envSamples env) of
-      Just t | t < resetAt -> " · " <> withColor yellow ("100% at ~" <> clock env t)
+      Just t | t < resetAt -> " " <> withColor yellow ("100% at ~" <> clock env t)
       _ -> ""
 
 clock :: Env -> Integer -> Text
