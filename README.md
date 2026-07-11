@@ -67,10 +67,11 @@ make build
 make test
 ```
 
-The core (`src/Statusline/*.hs` except `Shell.hs`) is pure: all effects
-(stdin, env, git, transcript file, timezone) are resolved in the IO shell and
-injected via `Render.Env`, so the whole rendering pipeline is testable without
-a real git repository or TZ manipulation.
+The core (`src/Statusline/*.hs` except `Shell.hs` and `Cache.hs`) is pure:
+all effects (stdin, env, git, transcript file, timezone, cache files) are
+resolved in the IO shell and injected via `Render.Env`, so the whole
+rendering pipeline is testable without a real git repository or TZ
+manipulation.
 
 Rows 1–3 count widths in code points, not terminal columns — East Asian wide
 characters in branch names or paths may over-run (parity with the original

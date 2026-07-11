@@ -9,10 +9,11 @@ module Statusline.Ansi
   , green
   , withColor
   , hyperlink
+  , sanitize
   ) where
 
 import Data.ByteString qualified as BS
-import Data.Char (chr, intToDigit, toUpper)
+import Data.Char (chr, intToDigit, isControl, toUpper)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (encodeUtf8)
@@ -44,3 +45,17 @@ escapeUri = T.pack . concatMap encodeByte . BS.unpack . encodeUtf8
       | b > 0x20 && b < 0x7F = [chr (fromIntegral b)]
       | otherwise = ['%', hex (b `div` 16), hex (b `mod` 16)]
     hex = toUpper . intToDigit . fromIntegral
+
+-- | Strip characters that can corrupt a terminal row: controls
+-- (escape-sequence injection) and bidi overrides (a single RTL override
+-- would visually reorder everything after it). ZWJ — also category Cf, like
+-- the bidi characters — stays so emoji sequences keep rendering.
+sanitize :: Text -> Text
+sanitize = T.filter (\c -> not (isControl c || isBidiControl c))
+
+isBidiControl :: Char -> Bool
+isBidiControl c =
+  c == '\x200E'
+    || c == '\x200F'
+    || (c >= '\x202A' && c <= '\x202E')
+    || (c >= '\x2066' && c <= '\x2069')

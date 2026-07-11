@@ -8,6 +8,7 @@ import Data.Aeson (Value (..), decode)
 import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString.Lazy (ByteString)
 import Data.Maybe (fromMaybe)
+import Statusline.Json (asObject, path)
 
 -- | Cumulative session tokens. Input counts cache creation but excludes
 -- cache reads to avoid double-counting.
@@ -36,14 +37,9 @@ lineTotals line = fromMaybe mempty $ do
   v@(Object o) <- decode line
   String "assistant" <- KM.lookup "type" o
   let usage k = fromMaybe 0 $ do
-        Number n <- KM.lookup k =<< objectAt ["message", "usage"] v
+        Number n <- KM.lookup k =<< asObject =<< path ["message", "usage"] v
         pure (truncate n)
   pure $
     TokenTotals
       (usage "input_tokens" + usage "cache_creation_input_tokens")
       (usage "output_tokens")
-
-objectAt :: [KM.Key] -> Value -> Maybe (KM.KeyMap Value)
-objectAt [] (Object o) = Just o
-objectAt (k : ks) (Object o) = objectAt ks =<< KM.lookup k o
-objectAt _ _ = Nothing

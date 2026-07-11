@@ -1,5 +1,6 @@
 module Statusline.Ticker
   ( Span (..)
+  , plain
   , marqueeSpans
   , displayWidth
   ) where
@@ -17,6 +18,10 @@ data Span = Span
   , spanUrl :: Maybe Text
   }
   deriving (Eq, Show)
+
+-- | Span with no link.
+plain :: Text -> Span
+plain t = Span t Nothing
 
 -- | One code point annotated with its owning span's URL, so link identity
 -- survives the scroll window and regroups afterwards.

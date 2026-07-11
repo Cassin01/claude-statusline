@@ -5,7 +5,7 @@ import Data.Text qualified as T
 import Data.Time (utc)
 import Statusline.Input
 import Statusline.Render
-import Statusline.Ticker (Span (..))
+import Statusline.Ticker (Span (..), plain)
 import Statusline.Transcript (TokenTotals (..))
 import Test.Hspec
 
@@ -37,9 +37,6 @@ rowAt :: Int -> Text -> Text
 rowAt n t = case drop n (T.lines (stripAnsi (stripOsc t))) of
   (r : _) -> r
   [] -> ""
-
-plain :: Text -> Span
-plain t = Span t Nothing
 
 withCtx :: Rational -> StatusInput
 withCtx p = emptyInput {siContextPct = Just (fromRational p)}
@@ -136,6 +133,9 @@ spec = describe "render" $ do
     it "blank items are dropped" $
       rowAt 1 (render defEnv {envTicker = [plain "", plain "🌕 100%"]} emptyInput)
         `shouldBe` "🌕 100%"
+    it "span text is scrubbed of controls and bidi overrides" $
+      rowAt 1 (render defEnv {envTicker = [plain "a\ESC\&b\x202E\&c"]} emptyInput)
+        `shouldBe` "abc"
     it "row is dim" $
       render defEnv {envTicker = [plain "🌕 100%"]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC[2m🌕 100%"

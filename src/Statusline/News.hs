@@ -3,9 +3,10 @@ module Statusline.News
   , newsItems
   ) where
 
-import Data.Char (isControl)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Statusline.Ansi (sanitize)
 
 -- | One RSS item: its title and, when present and plausible, its article
 -- link.
@@ -47,22 +48,14 @@ tagText tag item =
   where
     open = T.length tag + 2
 
--- Bidi overrides are stripped because a feed-controlled RTL override would
--- visually reorder the whole ticker row; ZWJ (also category Cf) stays so
--- emoji sequences in titles keep rendering.
+-- Sanitizing here (not only in the renderer) also keeps controls out of
+-- links, so a feed cannot smuggle escape bytes into a URL.
 clean :: Text -> Text
-clean = T.strip . T.filter (\c -> not (isControl c || isBidiControl c)) . unescape . unwrapCdata . T.strip
-
-isBidiControl :: Char -> Bool
-isBidiControl c =
-  c == '\x200E'
-    || c == '\x200F'
-    || (c >= '\x202A' && c <= '\x202E')
-    || (c >= '\x2066' && c <= '\x2069')
+clean = T.strip . sanitize . unescape . unwrapCdata . T.strip
 
 unwrapCdata :: Text -> Text
 unwrapCdata t = case T.stripPrefix "<![CDATA[" t of
-  Just rest -> maybe rest id (T.stripSuffix "]]>" rest)
+  Just rest -> fromMaybe rest (T.stripSuffix "]]>" rest)
   Nothing -> t
 
 unescape :: Text -> Text

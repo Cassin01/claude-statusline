@@ -8,23 +8,21 @@ module Statusline.Weather
   , weekLine
   ) where
 
-import Data.Aeson (Value (..), decodeStrict)
-import Data.Aeson.Key (Key)
-import Data.Aeson.KeyMap qualified as KM
-import Data.Foldable (toList)
-import Data.Maybe (mapMaybe)
-import Data.Scientific (Scientific, toRealFloat)
+import Data.Aeson (decodeStrict)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Scientific (toRealFloat)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time (Day, DayOfWeek (..), UTCTime (..), dayOfWeek)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Time.Format.ISO8601 (iso8601ParseM)
+import Statusline.Json (asArray, asNumber, asText, path)
 import Statusline.Moon (moonEmoji)
 
 -- | Latitude and longitude from an ipinfo.io response ("loc": "35.68,139.69").
--- Both parts must be strictly numeric: the values are spliced into the curl
--- command line, so anything else is rejected.
+-- Both parts must be strictly numeric: the values are spliced into the
+-- Open-Meteo URL, so anything else is rejected.
 parseLocation :: Text -> Maybe (Text, Text)
 parseLocation raw = do
   v <- decodeStrict (encodeUtf8 raw)
@@ -47,20 +45,20 @@ openMeteoUrl lat lon =
 -- zipped positionally; a day with any malformed field is dropped whole so the
 -- remaining triples stay aligned. Malformed JSON yields no days.
 forecastDays :: Text -> [(Day, Int, Double)]
-forecastDays raw = maybe [] id $ do
-  v <- decodeStrict (encodeUtf8 raw)
-  times <- asArray =<< path ["daily", "time"] v
-  codes <- asArray =<< path ["daily", "weather_code"] v
-  temps <- asArray =<< path ["daily", "temperature_2m_max"] v
+forecastDays raw = fromMaybe [] $ do
+  daily <- path ["daily"] =<< decodeStrict (encodeUtf8 raw)
+  times <- asArray =<< path ["time"] daily
+  codes <- asArray =<< path ["weather_code"] daily
+  temps <- asArray =<< path ["temperature_2m_max"] daily
   pure (mapMaybe triple (zip3 times codes temps))
   where
     triple (t, c, m) =
       (,,)
         <$> (parseDay =<< asText t)
-        <*> (asInt =<< asNumber c)
+        <*> (asInt <$> asNumber c)
         <*> (toRealFloat <$> asNumber m)
     parseDay = iso8601ParseM . T.unpack
-    asInt s = Just (round (toRealFloat s :: Double))
+    asInt s = round (toRealFloat s :: Double)
 
 -- | "金☀34°🌖 土☀35°🌗 …" — weekday, weather, rounded max temperature, and
 -- the moon phase at that day's noon UTC. Nothing when there are no days.
@@ -100,20 +98,3 @@ wmoEmoji code
   | code >= 80 && code <= 82 = "🌧"
   | code >= 95 = "⛈"
   | otherwise = "☁"
-
-path :: [Key] -> Value -> Maybe Value
-path [] v = Just v
-path (k : ks) (Object o) = path ks =<< KM.lookup k o
-path _ _ = Nothing
-
-asText :: Value -> Maybe Text
-asText (String t) = Just t
-asText _ = Nothing
-
-asNumber :: Value -> Maybe Scientific
-asNumber (Number n) = Just n
-asNumber _ = Nothing
-
-asArray :: Value -> Maybe [Value]
-asArray (Array xs) = Just (toList xs)
-asArray _ = Nothing
