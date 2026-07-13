@@ -5,12 +5,18 @@ import Statusline.Ticker
 import Test.Hspec
 
 linked :: Text -> Text -> Span
-linked t u = Span t (Just u)
+linked t u = Span t (Just u) Nothing
+
+colored :: Text -> Text -> Span
+colored t c = Span t Nothing (Just c)
+
+spaceGap :: Span
+spaceGap = plain "   "
 
 -- Flattened text of a windowed ticker, for tests that only care about
 -- content, not span boundaries.
 flat :: Int -> Integer -> Text -> Text
-flat cols epoch content = foldMap spanText (marqueeSpans cols epoch [plain content])
+flat cols epoch content = foldMap spanText (marqueeSpans cols epoch spaceGap [plain content])
 
 spec :: Spec
 spec = do
@@ -39,7 +45,7 @@ spec = do
     it "each second advances one code point" $
       flat 5 2 "abcdefghij" `shouldBe` "cdefg"
     it "wraps through the gap back to the head" $
-      -- loop = content + three spaces = 13 code points
+      -- loop = content + three-space gap = 13 code points
       flat 5 11 "abcdefghij" `shouldBe` "  abc"
     it "full cycle returns to the start" $
       flat 5 13 "abcdefghij" `shouldBe` flat 5 0 "abcdefghij"
@@ -51,7 +57,7 @@ spec = do
       displayWidth (flat 5 0 "日本語のニュース") `shouldSatisfy` (<= 5)
     it "a zero-width char is kept at an exhausted budget edge" $
       -- U+2600 (width 1) + VS-16 (width 0) must stay together at cols 1
-      marqueeSpans 1 0 [linked "\x2600\xFE0F\&abc" "u"] `shouldBe` [linked "\x2600\xFE0F" "u"]
+      marqueeSpans 1 0 spaceGap [linked "\x2600\xFE0F\&abc" "u"] `shouldBe` [linked "\x2600\xFE0F" "u"]
     it "empty content yields empty" $ flat 80 0 "" `shouldBe` ""
     it "non-positive columns yield empty" $ flat 0 0 "abc" `shouldBe` ""
     it "huge epoch still renders a window" $
@@ -59,17 +65,31 @@ spec = do
 
   describe "marqueeSpans (link tracking)" $ do
     it "content that fits keeps span boundaries and URLs" $
-      marqueeSpans 80 0 [linked "ab" "u1", plain " · ", linked "cd" "u2"]
+      marqueeSpans 80 0 spaceGap [linked "ab" "u1", plain " · ", linked "cd" "u2"]
         `shouldBe` [linked "ab" "u1", plain " · ", linked "cd" "u2"]
     it "adjacent spans with the same URL merge" $
-      marqueeSpans 80 0 [linked "ab" "u", linked "cd" "u"] `shouldBe` [linked "abcd" "u"]
+      marqueeSpans 80 0 spaceGap [linked "ab" "u", linked "cd" "u"] `shouldBe` [linked "abcd" "u"]
     it "the window slices a span but keeps its URL" $
-      marqueeSpans 5 2 [linked "abcdefghij" "u"] `shouldBe` [linked "cdefg" "u"]
+      marqueeSpans 5 2 spaceGap [linked "abcdefghij" "u"] `shouldBe` [linked "cdefg" "u"]
     it "a window across two items carries both URLs" $
       -- "abcdef" + gap = 9 cells; epoch 1 -> "bcde" split between the items
-      marqueeSpans 4 1 [linked "abc" "u1", linked "def" "u2"]
+      marqueeSpans 4 1 spaceGap [linked "abc" "u1", linked "def" "u2"]
         `shouldBe` [linked "bc" "u1", linked "de" "u2"]
     it "the wrap gap carries no URL" $
       -- "abcde" + gap = 8 cells; epoch 4 -> "e" plus the three-space gap
-      marqueeSpans 4 4 [linked "abcde" "u"] `shouldBe` [linked "e" "u", plain "   "]
-    it "empty spans yield nothing" $ marqueeSpans 10 0 [plain "", linked "" "u"] `shouldBe` []
+      marqueeSpans 4 4 spaceGap [linked "abcde" "u"] `shouldBe` [linked "e" "u", plain "   "]
+    it "empty spans yield nothing" $ marqueeSpans 10 0 spaceGap [plain "", linked "" "u"] `shouldBe` []
+
+  describe "marqueeSpans (color tracking)" $ do
+    it "content that fits keeps span colors" $
+      marqueeSpans 80 0 spaceGap [plain "ab", colored " · " "C", plain "cd"]
+        `shouldBe` [plain "ab", colored " · " "C", plain "cd"]
+    it "adjacent spans with the same URL but different colors stay split" $
+      marqueeSpans 80 0 spaceGap [colored "ab" "C1", colored "cd" "C2"]
+        `shouldBe` [colored "ab" "C1", colored "cd" "C2"]
+    it "the window slices a span but keeps its color" $
+      marqueeSpans 5 2 spaceGap [colored "abcdefghij" "C"] `shouldBe` [colored "cdefg" "C"]
+    it "the wrap gap carries its own color" $
+      -- "abcde" + 3-cell gap = 8 cells; epoch 4 -> "e" plus the gap span
+      marqueeSpans 4 4 (colored " · " "C") [linked "abcde" "u"]
+        `shouldBe` [linked "e" "u", colored " · " "C"]

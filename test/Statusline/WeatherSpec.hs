@@ -62,31 +62,31 @@ spec = do
       forecastDays "{\"daily\":{\"time\":[],\"weather_code\":[],\"temperature_2m_max\":[]}}"
         `shouldBe` []
 
-  describe "weekLine" $ do
+  describe "dayCells" $ do
     -- 2000-01-06 (Thu) is the reference new moon; 2000-01-21 (Fri) is full
     it "weekday + weather emoji + rounded max temp + moon emoji" $
-      weekLine [(fromGregorian 2000 1 6, 0, 34.2)] `shouldBe` Just "木☀34°\x1F311"
+      dayCells [(fromGregorian 2000 1 6, 0, 34.2)] `shouldBe` ["木☀34°\x1F311"]
     it "rainy full-moon day" $
-      weekLine [(fromGregorian 2000 1 21, 61, 5.6)] `shouldBe` Just "金🌧6°\x1F315"
-    it "days joined by single spaces" $
-      weekLine [(fromGregorian 2000 1 6, 0, 30), (fromGregorian 2000 1 7, 3, 28)]
-        `shouldBe` Just "木☀30°\x1F311 金☁28°\x1F311"
+      dayCells [(fromGregorian 2000 1 21, 61, 5.6)] `shouldBe` ["金🌧6°\x1F315"]
+    it "one cell per day, in order" $
+      dayCells [(fromGregorian 2000 1 6, 0, 30), (fromGregorian 2000 1 7, 3, 28)]
+        `shouldBe` ["木☀30°\x1F311", "金☁28°\x1F311"]
     it "negative temperature keeps its sign" $
-      weekLine [(fromGregorian 2000 1 6, 71, -5.4)] `shouldBe` Just "木🌨-5°\x1F311"
-    it "no days -> Nothing" $ weekLine [] `shouldBe` Nothing
+      dayCells [(fromGregorian 2000 1 6, 71, -5.4)] `shouldBe` ["木🌨-5°\x1F311"]
+    it "no days -> no cells" $ dayCells [] `shouldBe` []
     it "extreme temperature still renders" $
-      weekLine [(fromGregorian 2000 1 6, 0, 999.9)] `shouldBe` Just "木☀1000°\x1F311"
+      dayCells [(fromGregorian 2000 1 6, 0, 999.9)] `shouldBe` ["木☀1000°\x1F311"]
 
     context "WMO code grouping" $ do
-      let emojiFor code = T.take 1 . T.drop 1 <$> weekLine [(fromGregorian 2000 1 6, code, 0)]
-      it "0 clear" $ emojiFor 0 `shouldBe` Just "☀"
-      it "1 mostly clear" $ emojiFor 1 `shouldBe` Just "🌤"
-      it "2 partly cloudy" $ emojiFor 2 `shouldBe` Just "⛅"
-      it "3 overcast" $ emojiFor 3 `shouldBe` Just "☁"
-      it "45 fog" $ emojiFor 45 `shouldBe` Just "🌫"
-      it "51 drizzle" $ emojiFor 51 `shouldBe` Just "🌦"
-      it "61 rain" $ emojiFor 61 `shouldBe` Just "🌧"
-      it "71 snow" $ emojiFor 71 `shouldBe` Just "🌨"
-      it "80 showers" $ emojiFor 80 `shouldBe` Just "🌧"
-      it "95 thunderstorm" $ emojiFor 95 `shouldBe` Just "⛈"
-      it "unknown code falls back to cloud" $ emojiFor 42 `shouldBe` Just "☁"
+      let emojiFor code = map (T.take 1 . T.drop 1) (dayCells [(fromGregorian 2000 1 6, code, 0)])
+      it "0 clear" $ emojiFor 0 `shouldBe` ["☀"]
+      it "1 mostly clear" $ emojiFor 1 `shouldBe` ["🌤"]
+      it "2 partly cloudy" $ emojiFor 2 `shouldBe` ["⛅"]
+      it "3 overcast" $ emojiFor 3 `shouldBe` ["☁"]
+      it "45 fog" $ emojiFor 45 `shouldBe` ["🌫"]
+      it "51 drizzle" $ emojiFor 51 `shouldBe` ["🌦"]
+      it "61 rain" $ emojiFor 61 `shouldBe` ["🌧"]
+      it "71 snow" $ emojiFor 71 `shouldBe` ["🌨"]
+      it "80 showers" $ emojiFor 80 `shouldBe` ["🌧"]
+      it "95 thunderstorm" $ emojiFor 95 `shouldBe` ["⛈"]
+      it "unknown code falls back to cloud" $ emojiFor 42 `shouldBe` ["☁"]

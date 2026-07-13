@@ -1,11 +1,11 @@
--- | Week-ahead forecast line: ipinfo.io geolocation JSON -> Open-Meteo daily
+-- | Week-ahead forecast cells: ipinfo.io geolocation JSON -> Open-Meteo daily
 -- forecast JSON -> one per-day segment of weekday, weather emoji, max
 -- temperature, and moon phase.
 module Statusline.Weather
   ( parseLocation
   , openMeteoUrl
   , forecastDays
-  , weekLine
+  , dayCells
   ) where
 
 import Data.Aeson (decodeStrict)
@@ -60,11 +60,11 @@ forecastDays raw = fromMaybe [] $ do
     parseDay = iso8601ParseM . T.unpack
     asInt s = round (toRealFloat s :: Double)
 
--- | "金☀34°🌖 土☀35°🌗 …" — weekday, weather, rounded max temperature, and
--- the moon phase at that day's noon UTC. Nothing when there are no days.
-weekLine :: [(Day, Int, Double)] -> Maybe Text
-weekLine [] = Nothing
-weekLine days = Just (T.intercalate " " (map dayCell days))
+-- | One "金☀34°🌖" cell per day — weekday, weather, rounded max temperature,
+-- and the moon phase at that day's noon UTC — left unjoined so the ticker can
+-- put its own separator between days.
+dayCells :: [(Day, Int, Double)] -> [Text]
+dayCells = map dayCell
   where
     dayCell (d, code, tmax) =
       weekdayKanji (dayOfWeek d)

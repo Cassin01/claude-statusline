@@ -164,9 +164,12 @@ spec = describe "render" $ do
     it "span text is scrubbed of controls and bidi overrides" $
       rowAt 1 (render defEnv {envTicker = [plain "a\ESC\&b\x202E\&c"]} emptyInput)
         `shouldBe` "abc"
-    it "row is dim" $
+    it "items are dim" $
       render defEnv {envTicker = [plain "🌕 100%"]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC[2m🌕 100%"
+    it "the dot separator is cyan" $
+      render defEnv {envTicker = [plain "a", plain "b"]} emptyInput
+        `shouldSatisfy` T.isInfixOf "\ESC[36m · \ESC[0m"
     it "over-long content is windowed to the columns" $ do
       let long = [plain (T.replicate 200 "x")]
           r = rowAt 1 (render defEnv {envTicker = long} emptyInput)
@@ -176,32 +179,32 @@ spec = describe "render" $ do
           at n = rowAt 1 (render defEnv {envTicker = long, envNow = n} emptyInput)
       at 0 `shouldNotBe` at 100
     it "linked items are wrapped in OSC 8 hyperlinks" $ do
-      let item = Span "HN: headline" (Just "https://example.com/x")
+      let item = Span "HN: headline" (Just "https://example.com/x") Nothing
       render defEnv {envTicker = [item]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC]8;;https://example.com/x\aHN: headline\ESC]8;;\a"
     it "separators between linked items stay outside the links" $ do
-      let items = [Span "a" (Just "u1"), Span "b" (Just "u2")]
+      let items = [Span "a" (Just "u1") Nothing, Span "b" (Just "u2") Nothing]
       stripAnsi (render defEnv {envTicker = items} emptyInput)
         `shouldSatisfy` T.isSuffixOf "\ESC]8;;u1\aa\ESC]8;;\a · \ESC]8;;u2\ab\ESC]8;;\a"
     it "hyperlink escapes never consume window width" $ do
-      let long = [Span (T.replicate 200 "x") (Just "https://example.com/x")]
+      let long = [Span (T.replicate 200 "x") (Just "https://example.com/x") Nothing]
           raw = render defEnv {envTicker = long, envNow = 190} emptyInput
       -- visible text is exactly the column budget even though the raw row
       -- carries the OSC 8 wrappers
       T.length (rowAt 1 raw) `shouldBe` 80
       raw `shouldSatisfy` T.isInfixOf "\ESC]8;;https://example.com/x\a"
     it "a window over the wrap gap re-opens the link on both runs" $ do
-      -- 200 linked cells + 3-space gap; epoch 190 slices link/gap/link
-      let long = [Span (T.replicate 200 "x") (Just "https://e.com")]
+      -- 200 linked cells + 3-cell dot gap; epoch 190 slices link/gap/link
+      let long = [Span (T.replicate 200 "x") (Just "https://e.com") Nothing]
           raw = render defEnv {envTicker = long, envNow = 190} emptyInput
       T.count "\ESC]8;;https://e.com\a" raw `shouldBe` 2
     it "URI-reserved ascii in URLs passes through unencoded" $ do
-      let item = Span "t" (Just "https://e.com/a?x=1&y=2#f")
+      let item = Span "t" (Just "https://e.com/a?x=1&y=2#f") Nothing
       render defEnv {envTicker = [item]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC]8;;https://e.com/a?x=1&y=2#f\a"
     it "non-ascii in URLs is percent-encoded for the OSC 8 URI" $ do
       -- 日 = U+65E5 = UTF-8 E6 97 A5
-      let item = Span "t" (Just "https://e.com/日")
+      let item = Span "t" (Just "https://e.com/日") Nothing
       render defEnv {envTicker = [item]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC]8;;https://e.com/%E6%97%A5\a"
 
