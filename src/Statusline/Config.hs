@@ -40,6 +40,7 @@ data Feed = Feed
 
 data Rows = Rows
   { rowGit :: Bool
+  , rowModel :: Bool
   , rowUsage :: Bool
   , rowReset :: Bool
   , rowTicker :: Bool
@@ -62,7 +63,7 @@ data Config = Config
   deriving (Eq, Show)
 
 defaultRows :: Rows
-defaultRows = Rows True True True True
+defaultRows = Rows True True True True True
 
 defaultConfig :: Config
 defaultConfig =
@@ -93,6 +94,7 @@ fromValue v =
     , cfgRows =
         Rows
           { rowGit = rowOr rowGit "git"
+          , rowModel = rowOr rowModel "model"
           , rowUsage = rowOr rowUsage "usage"
           , rowReset = rowOr rowReset "reset"
           , rowTicker = rowOr rowTicker "ticker"
