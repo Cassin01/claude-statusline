@@ -3,6 +3,7 @@ module Statusline.RenderSpec (spec) where
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (utc)
+import Statusline.Ansi (yellow)
 import Statusline.Config (Rows (..), defaultRows)
 import Statusline.Input
 import Statusline.RateSample (Sample (..))
@@ -154,40 +155,50 @@ spec = describe "render" $ do
   context "ticker (row 4)" $ do
     -- with emptyInput rows 2 and 3 are absent, so the ticker lands at index 1
     it "items joined with a dot separator" $
-      rowAt 1 (render defEnv {envTicker = [plain "☀️ +31°C", plain "🌕 100%"]} emptyInput)
+      rowAt 1 (render defEnv {envTicker = [[plain "☀️ +31°C"], [plain "🌕 100%"]]} emptyInput)
         `shouldBe` "☀️ +31°C · 🌕 100%"
     it "no ticker items -> no row" $
       rowAt 1 (render defEnv emptyInput) `shouldBe` ""
     it "blank items are dropped" $
-      rowAt 1 (render defEnv {envTicker = [plain "", plain "🌕 100%"]} emptyInput)
+      rowAt 1 (render defEnv {envTicker = [[plain ""], [plain "🌕 100%"]]} emptyInput)
         `shouldBe` "🌕 100%"
+    it "no separator is inserted within a multi-span item" $
+      rowAt 1
+        ( render
+            defEnv
+              { envTicker =
+                  [[Span "HN: " (Just "u") (Just yellow), Span "t" (Just "u") Nothing]]
+              }
+            emptyInput
+        )
+        `shouldBe` "HN: t"
     it "span text is scrubbed of controls and bidi overrides" $
-      rowAt 1 (render defEnv {envTicker = [plain "a\ESC\&b\x202E\&c"]} emptyInput)
+      rowAt 1 (render defEnv {envTicker = [[plain "a\ESC\&b\x202E\&c"]]} emptyInput)
         `shouldBe` "abc"
     it "items are dim" $
-      render defEnv {envTicker = [plain "🌕 100%"]} emptyInput
+      render defEnv {envTicker = [[plain "🌕 100%"]]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC[2m🌕 100%"
     it "the dot separator is cyan" $
-      render defEnv {envTicker = [plain "a", plain "b"]} emptyInput
+      render defEnv {envTicker = [[plain "a"], [plain "b"]]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC[36m · \ESC[0m"
     it "over-long content is windowed to the columns" $ do
-      let long = [plain (T.replicate 200 "x")]
+      let long = [[plain (T.replicate 200 "x")]]
           r = rowAt 1 (render defEnv {envTicker = long} emptyInput)
       T.length r `shouldBe` 80
     it "epoch advances the window" $ do
-      let long = [plain (T.replicate 100 "a" <> T.replicate 100 "b")]
+      let long = [[plain (T.replicate 100 "a" <> T.replicate 100 "b")]]
           at n = rowAt 1 (render defEnv {envTicker = long, envNow = n} emptyInput)
       at 0 `shouldNotBe` at 100
     it "linked items are wrapped in OSC 8 hyperlinks" $ do
       let item = Span "HN: headline" (Just "https://example.com/x") Nothing
-      render defEnv {envTicker = [item]} emptyInput
+      render defEnv {envTicker = [[item]]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC]8;;https://example.com/x\aHN: headline\ESC]8;;\a"
     it "separators between linked items stay outside the links" $ do
-      let items = [Span "a" (Just "u1") Nothing, Span "b" (Just "u2") Nothing]
+      let items = [[Span "a" (Just "u1") Nothing], [Span "b" (Just "u2") Nothing]]
       stripAnsi (render defEnv {envTicker = items} emptyInput)
         `shouldSatisfy` T.isSuffixOf "\ESC]8;;u1\aa\ESC]8;;\a · \ESC]8;;u2\ab\ESC]8;;\a"
     it "hyperlink escapes never consume window width" $ do
-      let long = [Span (T.replicate 200 "x") (Just "https://example.com/x") Nothing]
+      let long = [[Span (T.replicate 200 "x") (Just "https://example.com/x") Nothing]]
           raw = render defEnv {envTicker = long, envNow = 190} emptyInput
       -- visible text is exactly the column budget even though the raw row
       -- carries the OSC 8 wrappers
@@ -195,17 +206,17 @@ spec = describe "render" $ do
       raw `shouldSatisfy` T.isInfixOf "\ESC]8;;https://example.com/x\a"
     it "a window over the wrap gap re-opens the link on both runs" $ do
       -- 200 linked cells + 3-cell dot gap; epoch 190 slices link/gap/link
-      let long = [Span (T.replicate 200 "x") (Just "https://e.com") Nothing]
+      let long = [[Span (T.replicate 200 "x") (Just "https://e.com") Nothing]]
           raw = render defEnv {envTicker = long, envNow = 190} emptyInput
       T.count "\ESC]8;;https://e.com\a" raw `shouldBe` 2
     it "URI-reserved ascii in URLs passes through unencoded" $ do
       let item = Span "t" (Just "https://e.com/a?x=1&y=2#f") Nothing
-      render defEnv {envTicker = [item]} emptyInput
+      render defEnv {envTicker = [[item]]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC]8;;https://e.com/a?x=1&y=2#f\a"
     it "non-ascii in URLs is percent-encoded for the OSC 8 URI" $ do
       -- 日 = U+65E5 = UTF-8 E6 97 A5
       let item = Span "t" (Just "https://e.com/日") Nothing
-      render defEnv {envTicker = [item]} emptyInput
+      render defEnv {envTicker = [[item]]} emptyInput
         `shouldSatisfy` T.isInfixOf "\ESC]8;;https://e.com/%E6%97%A5\a"
 
   context "row toggles (Env rows)" $ do
@@ -222,12 +233,12 @@ spec = describe "render" $ do
         `shouldSatisfy` (not . T.isInfixOf "resets at")
     it "ticker row off -> ticker absent despite items" $
       render
-        defEnv {envRows = defaultRows {rowTicker = False}, envTicker = [plain "🌕 100%"]}
+        defEnv {envRows = defaultRows {rowTicker = False}, envTicker = [[plain "🌕 100%"]]}
         emptyInput
         `shouldSatisfy` (not . T.isInfixOf "🌕")
     it "all rows off -> empty output" $
       render
-        defEnv {envRows = Rows False False False False, envTicker = [plain "🌕 100%"]}
+        defEnv {envRows = Rows False False False False, envTicker = [[plain "🌕 100%"]]}
         plainInput
         `shouldBe` ""
 
