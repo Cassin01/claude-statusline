@@ -19,15 +19,34 @@ data NewsItem = NewsItem
 -- | Items from an RSS feed, in document order. Channel-level tags are
 -- ignored by only looking inside <item> blocks; CDATA wrappers and the five
 -- predefined XML entities are resolved, control and bidi-override characters
--- are dropped. Items without a title are skipped; malformed input yields no
--- items.
+-- are dropped. A Google-News-style " - <publisher>" suffix (matched against
+-- the item's <source> tag) is stripped from the title. Items without a title
+-- are skipped; malformed input yields no items.
 newsItems :: Text -> [NewsItem]
 newsItems xml =
   [ NewsItem title (itemLink item)
   | item <- drop 1 (T.splitOn "<item>" xml)
-  , let title = tagText "title" item
+  , let title = stripSource (sourceText item) (tagText "title" item)
   , not (T.null title)
   ]
+
+-- | Google News RSS appends " - <publisher>" to every headline and carries the
+-- same publisher in a <source> tag; drop that trailing suffix so the ticker
+-- shows only the headline. Feeds without a <source> tag (e.g. NHK) are left
+-- untouched.
+stripSource :: Text -> Text -> Text
+stripSource source title
+  | T.null source = title
+  | otherwise = fromMaybe title (T.stripSuffix (" - " <> source) title)
+
+-- | Text of the item's <source> tag, which unlike <title>/<link> carries a
+-- @url@ attribute, so the opening tag is matched up to its own '>'.
+sourceText :: Text -> Text
+sourceText item = case T.breakOn "<source" item of
+  (_, rest)
+    | T.null rest -> ""
+    | otherwise ->
+        clean . fst . T.breakOn "</source>" . T.drop 1 . snd $ T.breakOn ">" rest
 
 -- | The item's <link> URL. Only absolute http(s) URLs of sane length without
 -- embedded spaces qualify. Escape safety is enforced elsewhere: 'clean' has
