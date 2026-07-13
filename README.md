@@ -2,12 +2,11 @@
 
 A four-row status line for [Claude Code](https://claude.com/claude-code), written in Haskell.
 
-```
-⎇ feature/branch ~/ghq/github.com/you/repo
-5h 10% 7d 5% ▣ 30% Σ 450 ↑350 ↓100
-5h resets at 09:30 100% at ~08:45
-金☀34°🌖 土☀35°🌗 日⛅33°🌗 月🌧29°🌗 火🌧28°🌘 水⛅31°🌘 木☀33°🌑 · ニュース見出し…
-```
+
+
+https://github.com/user-attachments/assets/b51bb047-394a-4077-878c-996de7dff370
+
+
 
 - **Row 1**: git branch · current directory (home-abbreviated, head-trimmed)
 - **Row 2**: 5h/7d rate-limit usage · context window usage (blue < 50% ≤ yellow < 80% ≤ red) · cumulative session tokens (cache reads excluded)
