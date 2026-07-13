@@ -5,7 +5,7 @@ module Statusline.Render
   ) where
 
 import Data.List (intersperse)
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (TimeZone, defaultTimeLocale, formatTime, utcToLocalTime)
@@ -29,9 +29,10 @@ data Env = Env
   , envTimeZone :: TimeZone
   , envNow :: Integer
   -- ^ Current epoch second, driving the row-4 marquee offset.
-  , envTicker :: [Span]
-  -- ^ Ambient items (weather, moon phase, news) for row 4, each optionally
-  -- linking to a URL.
+  , envTicker :: [[Span]]
+  -- ^ Ambient items (weather, moon phase, news) for row 4. Each item is a list
+  -- of spans (e.g. a colored feed tag followed by its headline); separators are
+  -- placed between items, never within one. Spans optionally link to a URL.
   , envRows :: Rows
   -- ^ Which rows the user has enabled.
   , envSamples :: [Sample]
@@ -132,18 +133,23 @@ clock env secs =
 
 -- row 4: ambient ticker scrolling right to left when wider than the terminal.
 -- Every separator — between items and at the marquee wrap — is the same cyan
--- middle dot, so it stands out against the dim item text. The row owner
--- scrubs span text of controls and bidi overrides once, so no producer can
--- corrupt or reorder the terminal row. Color and OSC 8 links are applied
--- after windowing so the scroll never slices an escape sequence; each visible
--- run of a linked item gets its own hyperlink wrapper.
+-- middle dot, so it stands out against the dim item text. Separators go only
+-- between items, never within one, so a multi-span item (e.g. a colored tag
+-- plus its headline) reads as a unit. The row owner scrubs span text of
+-- controls and bidi overrides once, so no producer can corrupt or reorder the
+-- terminal row. Color and OSC 8 links are applied after windowing so the
+-- scroll never slices an escape sequence; each visible run of a linked item
+-- gets its own hyperlink wrapper.
 row4 :: Env -> Text
-row4 env = case filter (not . T.null . spanText) (map scrub (envTicker env)) of
+row4 env = case mapMaybe cleanItem (envTicker env) of
   [] -> ""
   items ->
     foldMap renderSpan $
-      marqueeSpans (envColumns env) (envNow env) sep (intersperse sep items)
+      marqueeSpans (envColumns env) (envNow env) sep (concat (intersperse [sep] items))
   where
+    cleanItem spans = case filter (not . T.null . spanText) (map scrub spans) of
+      [] -> Nothing
+      ss -> Just ss
     scrub s = s {spanText = sanitize (spanText s)}
     sep = Span " · " Nothing (Just cyan)
     renderSpan (Span t url color) =
