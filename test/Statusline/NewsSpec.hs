@@ -43,6 +43,18 @@ spec = do
     it "keeps ZWJ so emoji sequences survive" $
       titles "<item><title>\x1F468\x200D\x1F469</title></item>"
         `shouldBe` ["\x1F468\x200D\x1F469"]
+    it "strips the Google News \" - <publisher>\" suffix named in <source>" $
+      titles "<item><title>見出し - 日本経済新聞</title><source url=\"https://www.nikkei.com\">日本経済新聞</source></item>"
+        `shouldBe` ["見出し"]
+    it "leaves the title alone when there is no <source> tag" $
+      titles "<item><title>見出し - 日本経済新聞</title></item>"
+        `shouldBe` ["見出し - 日本経済新聞"]
+    it "strips only the trailing publisher, keeping earlier \" - \" in the headline" $
+      titles "<item><title>A - B - 日本経済新聞</title><source url=\"x\">日本経済新聞</source></item>"
+        `shouldBe` ["A - B"]
+    it "does not strip when the suffix is not the source name" $
+      titles "<item><title>見出し - 別の新聞</title><source url=\"x\">日本経済新聞</source></item>"
+        `shouldBe` ["見出し - 別の新聞"]
 
   describe "newsItems (links)" $ do
     it "pairs each title with its absolute http(s) link" $
