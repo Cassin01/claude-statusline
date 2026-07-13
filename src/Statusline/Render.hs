@@ -46,6 +46,7 @@ render :: Env -> StatusInput -> Text
 render env input =
   T.intercalate "\n" . filter (not . T.null) $
     [ gate rowGit (row1 env input)
+    , gate rowModel (fromMaybe "" (modelSeg input))
     , gate rowUsage (row2 env input)
     , gate rowReset (row3 env input)
     , gate rowTicker (row4 env)
@@ -78,9 +79,30 @@ abbrevHome (Just home) p
   | (home <> "/") `T.isPrefixOf` p = "~" <> T.drop (T.length home) p
 abbrevHome _ p = p
 
--- row 2: limits · context · tokens, single-space joined
+-- usage row: limits · context · tokens, single-space joined
 row2 :: Env -> StatusInput -> Text
 row2 env input = T.intercalate " " (catMaybes [limitsSeg input, ctxSeg input, tokensSeg (envTokens env)])
+
+-- model row: standalone "◆ model·effort" badge, above the usage row.
+-- Colored by effort tier. Effort is present only when the model reports it;
+-- without it, the name shows alone in blue. Empty when no model is supplied,
+-- so 'render' drops the row entirely.
+modelSeg :: StatusInput -> Maybe Text
+modelSeg input = do
+  name <- siModel input
+  let (suffix, color) = case siEffort input of
+        Just e -> ("·" <> e, effortColor e)
+        Nothing -> ("", blue)
+  pure (withColor color ("◆ " <> name <> suffix))
+
+effortColor :: Text -> Text
+effortColor e = case e of
+  "low" -> dim
+  "medium" -> green
+  "high" -> yellow
+  "xhigh" -> red
+  "max" -> red
+  _ -> blue
 
 limitsSeg :: StatusInput -> Maybe Text
 limitsSeg input = case parts of

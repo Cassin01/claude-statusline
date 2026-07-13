@@ -16,12 +16,12 @@ spec = do
             parseConfig
               "{\"feeds\":[{\"name\":\"nhk\",\"label\":\"NHK: \",\"url\":\"https://nhk.example/rss\"}],\
               \\"headlineCount\":5,\
-              \\"rows\":{\"git\":true,\"usage\":true,\"reset\":false,\"ticker\":true},\
+              \\"rows\":{\"git\":true,\"model\":false,\"usage\":true,\"reset\":false,\"ticker\":true},\
               \\"ttl\":{\"location\":86400,\"forecast\":10800,\"news\":1200}}"
       it "extracts feeds" $
         cfgFeeds full `shouldBe` [Feed "nhk" "NHK: " "https://nhk.example/rss"]
       it "extracts headlineCount" $ cfgHeadlineCount full `shouldBe` 5
-      it "extracts rows" $ cfgRows full `shouldBe` Rows True True False True
+      it "extracts rows" $ cfgRows full `shouldBe` Rows True False True False True
       it "extracts ttl" $ cfgTtl full `shouldBe` Ttl 86400 10800 1200
       it "missing label defaults to name plus separator" $
         feedAt 0 (parseConfig "{\"feeds\":[{\"name\":\"hn\",\"url\":\"https://e.com\"}]}")

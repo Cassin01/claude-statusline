@@ -48,6 +48,44 @@ withCtx p = emptyInput {siContextPct = Just (fromRational p)}
 
 spec :: Spec
 spec = describe "render" $ do
+  context "model + effort row (row 2, own line)" $ do
+    let withModel m e = emptyInput {siModel = m, siEffort = e}
+    it "model + effort -> badge text" $
+      rowAt 1 (render defEnv (withModel (Just "Opus") (Just "high"))) `shouldBe` "◆ Opus·high"
+    it "model without effort -> name only" $
+      rowAt 1 (render defEnv (withModel (Just "Opus") Nothing)) `shouldBe` "◆ Opus"
+    it "no model -> row absent" $
+      rowAt 1 (render defEnv (withModel Nothing (Just "high"))) `shouldBe` ""
+    it "model row off -> badge hidden" $
+      render defEnv {envRows = defaultRows {rowModel = False}} (withModel (Just "Opus") (Just "high"))
+        `shouldSatisfy` (not . T.isInfixOf "Opus")
+    it "low effort -> dim" $
+      render defEnv (withModel (Just "Opus") (Just "low"))
+        `shouldSatisfy` T.isInfixOf "\ESC[2m◆ Opus·low"
+    it "medium effort -> green" $
+      render defEnv (withModel (Just "Opus") (Just "medium"))
+        `shouldSatisfy` T.isInfixOf "\ESC[32m◆ Opus·medium"
+    it "high effort -> yellow" $
+      render defEnv (withModel (Just "Opus") (Just "high"))
+        `shouldSatisfy` T.isInfixOf "\ESC[33m◆ Opus·high"
+    it "xhigh effort -> red" $
+      render defEnv (withModel (Just "Opus") (Just "xhigh"))
+        `shouldSatisfy` T.isInfixOf "\ESC[31m◆ Opus·xhigh"
+    it "max effort -> red" $
+      render defEnv (withModel (Just "Opus") (Just "max"))
+        `shouldSatisfy` T.isInfixOf "\ESC[31m◆ Opus·max"
+    it "no effort -> blue base" $
+      render defEnv (withModel (Just "Opus") Nothing)
+        `shouldSatisfy` T.isInfixOf "\ESC[34m◆ Opus"
+    it "unknown effort value -> base color, suffix kept" $ do
+      let r = render defEnv (withModel (Just "Opus") (Just "turbo"))
+      rowAt 1 r `shouldBe` "◆ Opus·turbo"
+      r `shouldSatisfy` T.isInfixOf "\ESC[34m◆ Opus·turbo"
+    it "model gets its own row above usage" $ do
+      let r = render defEnv (withModel (Just "Opus") (Just "high")) {siFiveHour = Just 10}
+      rowAt 1 r `shouldBe` "◆ Opus·high"
+      rowAt 2 r `shouldBe` "5h 10%"
+
   context "context percentage (value + colour thresholds)" $ do
     it "ctx 42 -> text" $ rowAt 1 (render defEnv (withCtx 42)) `shouldBe` "▣ 42%"
     it "ctx 42.7 -> decimal stripped" $ rowAt 1 (render defEnv (withCtx 42.7)) `shouldBe` "▣ 42%"
@@ -238,7 +276,7 @@ spec = describe "render" $ do
         `shouldSatisfy` (not . T.isInfixOf "🌕")
     it "all rows off -> empty output" $
       render
-        defEnv {envRows = Rows False False False False, envTicker = [[plain "🌕 100%"]]}
+        defEnv {envRows = Rows False False False False False, envTicker = [[plain "🌕 100%"]]}
         plainInput
         `shouldBe` ""
 

@@ -1,6 +1,6 @@
 # claude-statusline
 
-A four-row status line for [Claude Code](https://claude.com/claude-code), written in Haskell.
+A five-row status line for [Claude Code](https://claude.com/claude-code), written in Haskell.
 
 
 
@@ -9,14 +9,18 @@ https://github.com/user-attachments/assets/b51bb047-394a-4077-878c-996de7dff370
 
 
 - **Row 1**: git branch · current directory (home-abbreviated, head-trimmed)
-- **Row 2**: 5h/7d rate-limit usage · context window usage (blue < 50% ≤ yellow < 80% ≤ red) · cumulative session tokens (cache reads excluded)
-- **Row 3**: local clock time the 5h rate-limit window resets, plus — when
+- **Row 2**: `◆ model·effort` badge — the active model name and reasoning
+  effort, effort-tier colored (dim → green → yellow → red as it rises). The
+  `·effort` suffix is omitted when the model reports no reasoning effort; the
+  whole row is skipped when no model is supplied
+- **Row 3**: 5h/7d rate-limit usage · context window usage (blue < 50% ≤ yellow < 80% ≤ red) · cumulative session tokens (cache reads excluded)
+- **Row 4**: local clock time the 5h rate-limit window resets, plus — when
   the current burn rate would hit 100% before that reset — the predicted
   exhaustion time (`100% at ~HH:MM`, yellow). The rate is fitted over up to
   30 minutes of usage samples persisted in the XDG cache across invocations;
   the segment stays hidden until enough rising samples accumulate (≥ 60 s
   span) or when the pace comfortably outlasts the window
-- **Row 4**: ambient ticker — a 7-day forecast (weekday, weather emoji, max
+- **Row 5**: ambient ticker — a 7-day forecast (weekday, weather emoji, max
   temperature, and moon phase per day) followed by the latest headlines from
   NHK, Nikkei, BBC, Hacker News, and Zenn, every item separated by a cyan middle dot.
   Each headline is an OSC 8 hyperlink: Cmd+click
@@ -29,7 +33,7 @@ https://github.com/user-attachments/assets/b51bb047-394a-4077-878c-996de7dff370
 Empty rows are skipped. The binary reads the Claude Code statusLine JSON
 protocol on stdin and writes ANSI-colored rows to stdout.
 
-Row 4 never blocks on the network. The forecast chain is: [ipinfo.io](https://ipinfo.io)
+Row 5 never blocks on the network. The forecast chain is: [ipinfo.io](https://ipinfo.io)
 resolves the location from the caller's IP (cached 24 h), then
 [Open-Meteo](https://open-meteo.com) supplies the 7-day forecast for those
 coordinates (cached 3 h); the news feeds — NHK RSS, Nikkei via a
@@ -62,7 +66,7 @@ Then point Claude Code at it in `~/.claude/settings.json`:
 }
 ```
 
-`refreshInterval` matters for row 4: Claude Code only re-runs the status line
+`refreshInterval` matters for row 5: Claude Code only re-runs the status line
 command on conversation events (new assistant message, `/compact`, mode
 changes), so without a periodic refresh the ticker freezes whenever the
 session is idle. `refreshInterval: 1` re-runs it every second, which is what
@@ -86,12 +90,12 @@ config. Validate with `jq . config.json` if something looks off.
     { "name": "zenn",       "label": "Zenn: ", "url": "https://zenn.dev/feed" }
   ],
   "headlineCount": 3,
-  "rows": { "git": true, "usage": true, "reset": true, "ticker": true },
+  "rows": { "git": true, "model": true, "usage": true, "reset": true, "ticker": true },
   "ttl": { "location": 86400, "forecast": 10800, "news": 1200 }
 }
 ```
 
-- **feeds** — RSS sources for row 4. `name` and `url` are required (invalid
+- **feeds** — RSS sources for row 5. `name` and `url` are required (invalid
   items are dropped); `label` defaults to `"<name>: "`. An explicit `[]`
   disables headlines. Feeds must expose RSS `<item>` elements with `<title>`
   (and ideally `<link>`).
@@ -114,7 +118,7 @@ resolved in the IO shell and injected via `Render.Env`, so the whole
 rendering pipeline is testable without a real git repository or TZ
 manipulation.
 
-Rows 1–3 count widths in code points, not terminal columns — East Asian wide
+Rows 1–4 count widths in code points, not terminal columns — East Asian wide
 characters in branch names or paths may over-run (parity with the original
-bash implementation). The row-4 ticker clips by display cells (CJK and emoji
+bash implementation). The row-5 ticker clips by display cells (CJK and emoji
 count as two) since its content is routinely Japanese.
