@@ -15,7 +15,7 @@ import Statusline.Config (Rows (..))
 import Statusline.Humanize (hum)
 import Statusline.Input (StatusInput (..), validEpoch)
 import Statusline.RateSample (Sample, predictExhaustion)
-import Statusline.Ticker (Span (..), marqueeSpans, plain)
+import Statusline.Ticker (Span (..), marqueeSpans)
 import Statusline.Transcript (TokenTotals (..), totalTokens)
 import Statusline.Truncate (midEllipsis, pathHeadTrim)
 
@@ -131,20 +131,23 @@ clock env secs =
     local = utcToLocalTime (envTimeZone env) (posixSecondsToUTCTime (fromInteger secs))
 
 -- row 4: ambient ticker scrolling right to left when wider than the terminal.
--- The row owner scrubs span text of controls and bidi overrides once, so no
--- producer can corrupt or reorder the terminal row. Color and OSC 8 links
--- are applied after windowing so the scroll never slices an escape sequence;
--- each visible run of a linked item gets its own hyperlink wrapper.
+-- Every separator — between items and at the marquee wrap — is the same cyan
+-- middle dot, so it stands out against the dim item text. The row owner
+-- scrubs span text of controls and bidi overrides once, so no producer can
+-- corrupt or reorder the terminal row. Color and OSC 8 links are applied
+-- after windowing so the scroll never slices an escape sequence; each visible
+-- run of a linked item gets its own hyperlink wrapper.
 row4 :: Env -> Text
 row4 env = case filter (not . T.null . spanText) (map scrub (envTicker env)) of
   [] -> ""
   items ->
-    withColor dim . foldMap renderSpan $
-      marqueeSpans (envColumns env) (envNow env) (intersperse gap items)
+    foldMap renderSpan $
+      marqueeSpans (envColumns env) (envNow env) sep (intersperse sep items)
   where
     scrub s = s {spanText = sanitize (spanText s)}
-    gap = plain " · "
-    renderSpan (Span t url) = maybe t (`hyperlink` t) url
+    sep = Span " · " Nothing (Just cyan)
+    renderSpan (Span t url color) =
+      withColor (fromMaybe dim color) (maybe t (`hyperlink` t) url)
 
 -- percentages arrive as e.g. 42.7 and are truncated like bash ${x%.*}
 asPct :: RealFrac a => a -> Text

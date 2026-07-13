@@ -10,38 +10,43 @@ import Data.List (groupBy)
 import Data.Text (Text)
 import Data.Text qualified as T
 
--- | A run of ticker text, optionally linked to a URL. The URL is carried as
--- data (not as embedded escape sequences) so the marquee can slice content
--- freely; the renderer turns it into an OSC 8 hyperlink after windowing.
+-- | A run of ticker text, optionally linked to a URL and optionally carrying
+-- its own ANSI color. Both are carried as data (not as embedded escape
+-- sequences) so the marquee can slice content freely; the renderer turns them
+-- into escape sequences after windowing.
 data Span = Span
   { spanText :: Text
   , spanUrl :: Maybe Text
+  , spanColor :: Maybe Text
   }
   deriving (Eq, Show)
 
--- | Span with no link.
+-- | Span with no link and no color.
 plain :: Text -> Span
-plain t = Span t Nothing
+plain t = Span t Nothing Nothing
 
--- | One code point annotated with its owning span's URL, so link identity
--- survives the scroll window and regroups afterwards.
-type Cell = (Char, Maybe Text)
+-- | One code point annotated with its owning span's URL and color, so both
+-- survive the scroll window and regroup afterwards.
+type Cell = (Char, (Maybe Text, Maybe Text))
 
 -- | Right-to-left ticker window. Content that fits is shown as-is; longer
 -- content advances one code point per second of the given epoch clock,
--- wrapping through a three-space gap (which carries no URL). The window is
--- clipped to the column budget in display cells so wide (CJK/emoji)
--- characters do not over-run, splitting spans at the window edges while
--- preserving each character's URL.
-marqueeSpans :: Int -> Integer -> [Span] -> [Span]
-marqueeSpans cols epoch spans
+-- wrapping through the given gap span. The window is clipped to the column
+-- budget in display cells so wide (CJK/emoji) characters do not over-run,
+-- splitting spans at the window edges while preserving each character's URL
+-- and color.
+marqueeSpans :: Int -> Integer -> Span -> [Span] -> [Span]
+marqueeSpans cols epoch gap spans
   | cols <= 0 || null cells = []
   | cellsWidth cells <= cols = regroup cells
   | otherwise = regroup (takeCells cols (drop off looped <> take off looped))
   where
-    cells = [(c, spanUrl s) | s <- spans, c <- T.unpack (spanText s)]
-    looped = cells <> map (,Nothing) "   "
+    cells = concatMap spanCells spans
+    looped = cells <> spanCells gap
     off = fromIntegral (epoch `mod` fromIntegral (length looped))
+
+spanCells :: Span -> [Cell]
+spanCells s = [(c, (spanUrl s, spanColor s)) | c <- T.unpack (spanText s)]
 
 -- | Width in terminal cells: CJK and emoji count 2, joiners count 0.
 displayWidth :: Text -> Int
@@ -60,7 +65,8 @@ takeCells remaining (cell@(c, _) : cs)
     w = charCells c
 
 regroup :: [Cell] -> [Span]
-regroup cells = [Span (T.pack (map fst g)) url | g@((_, url) : _) <- groupBy ((==) `on` snd) cells]
+regroup cells =
+  [Span (T.pack (map fst g)) url color | g@((_, (url, color)) : _) <- groupBy ((==) `on` snd) cells]
 
 charCells :: Char -> Int
 charCells c

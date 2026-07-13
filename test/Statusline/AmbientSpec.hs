@@ -12,22 +12,29 @@ sampleForecast :: Text
 sampleForecast =
   "{\"daily\":{\"time\":[\"2026-07-10\"],\"weather_code\":[0],\"temperature_2m_max\":[30.2]}}"
 
+twoDayForecast :: Text
+twoDayForecast =
+  "{\"daily\":{\"time\":[\"2026-07-10\",\"2026-07-11\"],\"weather_code\":[0,3],\"temperature_2m_max\":[30.2,28.0]}}"
+
 item :: Int -> Text
 item i = "<item><title>t" <> T.pack (show i) <> "</title></item>"
 
 spec :: Spec
 spec = describe "buildTicker" $ do
-  it "leads with the week line when the forecast parses" $ do
+  it "leads with the forecast days when the forecast parses" $ do
     let ticker = buildTicker 3 0 (Just sampleForecast) []
     map spanUrl ticker `shouldBe` [Nothing]
     spanText (head ticker) `shouldSatisfy` T.isPrefixOf "金☀30°"
+  it "each forecast day is its own item" $ do
+    let texts = map spanText (buildTicker 3 0 (Just twoDayForecast) [])
+    map (T.take 5) texts `shouldBe` ["金☀30°", "土☁28°"]
   it "no forecast -> today's moon phase alone" $
     buildTicker 3 0 Nothing [] `shouldBe` [plain (moonPhase 0)]
   it "malformed forecast -> moon phase fallback" $
     buildTicker 3 0 (Just "not json") [] `shouldBe` [plain (moonPhase 0)]
   it "labels each headline and keeps its link" $
     buildTicker 3 0 Nothing [("HN: ", Just "<item><title>t</title><link>https://e.com/a</link></item>")]
-      `shouldBe` [plain (moonPhase 0), Span "HN: t" (Just "https://e.com/a")]
+      `shouldBe` [plain (moonPhase 0), Span "HN: t" (Just "https://e.com/a") Nothing]
   it "feeds contribute in order" $
     map spanText (buildTicker 3 0 Nothing [("NHK: ", Just (item 1)), ("HN: ", Just (item 2))])
       `shouldBe` [moonPhase 0, "NHK: t1", "HN: t2"]
