@@ -65,17 +65,17 @@ spec = do
   describe "dayCells" $ do
     -- 2000-01-06 (Thu) is the reference new moon; 2000-01-21 (Fri) is full
     it "weekday + weather emoji + rounded max temp + moon emoji" $
-      dayCells [(fromGregorian 2000 1 6, 0, 34.2)] `shouldBe` ["木☀34°\x1F311"]
+      dayCells [(fromGregorian 2000 1 6, 0, 34.2)] `shouldBe` ["木☀\xFE0F\&34°\x1F311"]
     it "rainy full-moon day" $
-      dayCells [(fromGregorian 2000 1 21, 61, 5.6)] `shouldBe` ["金🌧6°\x1F315"]
+      dayCells [(fromGregorian 2000 1 21, 61, 5.6)] `shouldBe` ["金🌧\xFE0F\&6°\x1F315"]
     it "one cell per day, in order" $
       dayCells [(fromGregorian 2000 1 6, 0, 30), (fromGregorian 2000 1 7, 3, 28)]
-        `shouldBe` ["木☀30°\x1F311", "金☁28°\x1F311"]
+        `shouldBe` ["木☀\xFE0F\&30°\x1F311", "金☁\xFE0F\&28°\x1F311"]
     it "negative temperature keeps its sign" $
-      dayCells [(fromGregorian 2000 1 6, 71, -5.4)] `shouldBe` ["木🌨-5°\x1F311"]
+      dayCells [(fromGregorian 2000 1 6, 71, -5.4)] `shouldBe` ["木🌨\xFE0F\&-5°\x1F311"]
     it "no days -> no cells" $ dayCells [] `shouldBe` []
     it "extreme temperature still renders" $
-      dayCells [(fromGregorian 2000 1 6, 0, 999.9)] `shouldBe` ["木☀1000°\x1F311"]
+      dayCells [(fromGregorian 2000 1 6, 0, 999.9)] `shouldBe` ["木☀\xFE0F\&1000°\x1F311"]
 
     context "WMO code grouping" $ do
       let emojiFor code = map (T.take 1 . T.drop 1) (dayCells [(fromGregorian 2000 1 6, code, 0)])
