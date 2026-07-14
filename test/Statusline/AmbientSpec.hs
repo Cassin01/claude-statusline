@@ -30,10 +30,10 @@ spec = describe "buildTicker" $ do
   it "leads with the forecast days when the forecast parses" $ do
     let ticker = buildTicker 3 0 (Just sampleForecast) []
     map (map spanUrl) ticker `shouldBe` [[Nothing]]
-    allTexts ticker `shouldSatisfy` (T.isPrefixOf "金☀30°" . head)
+    allTexts ticker `shouldSatisfy` (T.isPrefixOf "金☀\xFE0F\&30°" . head)
   it "each forecast day is its own item" $ do
     let texts = allTexts (buildTicker 3 0 (Just twoDayForecast) [])
-    map (T.take 5) texts `shouldBe` ["金☀30°", "土☁28°"]
+    map (T.take 6) texts `shouldBe` ["金☀\xFE0F\&30°", "土☁\xFE0F\&28°"]
   it "no forecast -> today's moon phase alone" $
     buildTicker 3 0 Nothing [] `shouldBe` [[plain (moonPhase 0)]]
   it "malformed forecast -> moon phase fallback" $

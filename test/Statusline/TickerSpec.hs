@@ -24,13 +24,17 @@ spec = do
     it "ascii counts 1 per char" $ displayWidth "abc" `shouldBe` 3
     it "CJK counts 2 per char" $ displayWidth "日本語" `shouldBe` 6
     it "emoji counts 2" $ displayWidth "\x1F315" `shouldBe` 2
-    it "variation selector and ZWJ count 0" $ displayWidth "\x2600\xFE0F\x200D" `shouldBe` 1
+    it "base counts, variation selector and ZWJ count 0" $ displayWidth "\x2600\xFE0F\x200D" `shouldBe` 2
     it "emoji-presentation BMP weather symbols count 2" $ do
       displayWidth "⛅" `shouldBe` 2
       displayWidth "⛈" `shouldBe` 2
-    it "text-presentation weather symbols count 1" $ do
-      displayWidth "☀" `shouldBe` 1
-      displayWidth "☁" `shouldBe` 1
+    it "BMP weather symbols count 2" $ do
+      displayWidth "☀" `shouldBe` 2
+      displayWidth "☁" `shouldBe` 2
+    it "weather emoji with FE0F selector count 2" $ do
+      displayWidth "☀\xFE0F" `shouldBe` 2
+      displayWidth "☁\xFE0F" `shouldBe` 2
+      displayWidth "🌤\xFE0F" `shouldBe` 2
     it "empty is 0" $ displayWidth "" `shouldBe` 0
 
   describe "marqueeSpans (scrolling)" $ do
@@ -56,8 +60,8 @@ spec = do
     it "wide chars never over-run the column budget" $
       displayWidth (flat 5 0 "日本語のニュース") `shouldSatisfy` (<= 5)
     it "a zero-width char is kept at an exhausted budget edge" $
-      -- U+2600 (width 1) + VS-16 (width 0) must stay together at cols 1
-      marqueeSpans 1 0 spaceGap [linked "\x2600\xFE0F\&abc" "u"] `shouldBe` [linked "\x2600\xFE0F" "u"]
+      -- U+2600 (width 2) + VS-16 (width 0) must stay together at cols 2
+      marqueeSpans 2 0 spaceGap [linked "\x2600\xFE0F\&abc" "u"] `shouldBe` [linked "\x2600\xFE0F" "u"]
     it "empty content yields empty" $ flat 80 0 "" `shouldBe` ""
     it "non-positive columns yield empty" $ flat 0 0 "abc" `shouldBe` ""
     it "huge epoch still renders a window" $
