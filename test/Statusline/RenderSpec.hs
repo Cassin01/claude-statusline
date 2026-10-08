@@ -86,6 +86,31 @@ spec = describe "render" $ do
       rowAt 1 r `shouldBe` "◆ Opus·high"
       rowAt 2 r `shouldBe` "5h 10%"
 
+  context "session id (row 2, before the model badge)" $ do
+    let withSession s = emptyInput {siSession = s, siModel = Just "Opus", siEffort = Just "high"}
+        uuid = "73274db9-a7d4-4a9e-b2ab-0ac957386c4d"
+    it "session + model -> short id first, dim" $ do
+      let r = render defEnv (withSession (Just uuid))
+      rowAt 1 r `shouldBe` "⌗ 73274db9 ◆ Opus·high"
+      r `shouldSatisfy` T.isInfixOf "\ESC[2m⌗ 73274db9\ESC[0m"
+    it "session without model -> id alone" $
+      rowAt 1 (render defEnv emptyInput {siSession = Just uuid}) `shouldBe` "⌗ 73274db9"
+    it "id shorter than 8 -> shown as-is" $
+      rowAt 1 (render defEnv (withSession (Just "abc"))) `shouldBe` "⌗ abc ◆ Opus·high"
+    it "exactly 8 chars -> unchanged" $
+      rowAt 1 (render defEnv (withSession (Just "12345678"))) `shouldBe` "⌗ 12345678 ◆ Opus·high"
+    it "empty id -> segment omitted" $
+      rowAt 1 (render defEnv (withSession (Just ""))) `shouldBe` "◆ Opus·high"
+    it "control chars only -> segment omitted" $
+      rowAt 1 (render defEnv (withSession (Just "\ESC\n\t"))) `shouldBe` "◆ Opus·high"
+    it "control chars scrubbed before truncation" $
+      rowAt 1 (render defEnv (withSession (Just "7327\n4db9\a-a7d4"))) `shouldBe` "⌗ 73274db9 ◆ Opus·high"
+    it "very long id -> truncated to 8" $
+      rowAt 1 (render defEnv (withSession (Just (T.replicate 100000 "a")))) `shouldBe` "⌗ aaaaaaaa ◆ Opus·high"
+    it "model row off -> session hidden" $
+      render defEnv {envRows = defaultRows {rowModel = False}} (withSession (Just uuid))
+        `shouldSatisfy` (not . T.isInfixOf "73274db9")
+
   context "context percentage (value + colour thresholds)" $ do
     it "ctx 42 -> text" $ rowAt 1 (render defEnv (withCtx 42)) `shouldBe` "▣ 42%"
     it "ctx 42.7 -> decimal stripped" $ rowAt 1 (render defEnv (withCtx 42.7)) `shouldBe` "▣ 42%"

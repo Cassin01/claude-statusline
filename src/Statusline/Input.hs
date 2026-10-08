@@ -23,11 +23,12 @@ data StatusInput = StatusInput
   , siTranscript :: Maybe FilePath
   , siModel :: Maybe Text
   , siEffort :: Maybe Text
+  , siSession :: Maybe Text
   }
   deriving (Eq, Show)
 
 emptyInput :: StatusInput
-emptyInput = StatusInput Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+emptyInput = StatusInput Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 -- | Malformed JSON degrades to 'emptyInput' so row 1 still renders with the
 -- "." cwd fallback, matching the bash original. Fields of an unexpected JSON
@@ -46,6 +47,7 @@ fromValue v =
     , siTranscript = T.unpack <$> (asText =<< path ["transcript_path"] v)
     , siModel = asText =<< (path ["model", "display_name"] v <|> path ["model", "id"] v)
     , siEffort = asText =<< path ["effort", "level"] v
+    , siSession = asText =<< path ["session_id"] v
     }
 
 -- | resets_at is honoured only as a non-negative integer epoch, mirroring the
