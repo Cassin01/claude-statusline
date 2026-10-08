@@ -9,10 +9,11 @@ https://github.com/user-attachments/assets/b51bb047-394a-4077-878c-996de7dff370
 
 
 - **Row 1**: git branch · current directory (home-abbreviated, head-trimmed)
-- **Row 2**: `◆ model·effort` badge — the active model name and reasoning
-  effort, effort-tier colored (dim → green → yellow → red as it rises). The
-  `·effort` suffix is omitted when the model reports no reasoning effort; the
-  whole row is skipped when no model is supplied
+- **Row 2**: dim `⌗ session` id (first 8 chars) followed by a
+  `◆ model·effort` badge — the active model name and reasoning effort,
+  effort-tier colored (dim → green → yellow → red as it rises). The `·effort`
+  suffix is omitted when the model reports no reasoning effort; the whole row
+  is skipped when neither a session id nor a model is supplied
 - **Row 3**: 5h/7d rate-limit usage · context window usage (blue < 50% ≤ yellow < 80% ≤ red) · cumulative session tokens (cache reads excluded)
 - **Row 4**: local clock time the 5h rate-limit window resets, plus — when
   the current burn rate would hit 100% before that reset — the predicted

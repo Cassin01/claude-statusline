@@ -46,7 +46,7 @@ render :: Env -> StatusInput -> Text
 render env input =
   T.intercalate "\n" . filter (not . T.null) $
     [ gate rowGit (row1 env input)
-    , gate rowModel (fromMaybe "" (modelSeg input))
+    , gate rowModel (modelRow input)
     , gate rowUsage (row2 env input)
     , gate rowReset (row3 env input)
     , gate rowTicker (row4 env)
@@ -83,10 +83,19 @@ abbrevHome _ p = p
 row2 :: Env -> StatusInput -> Text
 row2 env input = T.intercalate " " (catMaybes [limitsSeg input, ctxSeg input, tokensSeg (envTokens env)])
 
--- model row: standalone "◆ model·effort" badge, above the usage row.
--- Colored by effort tier. Effort is present only when the model reports it;
--- without it, the name shows alone in blue. Empty when no model is supplied,
--- so 'render' drops the row entirely.
+-- model row: dim short session id, then the "◆ model·effort" badge, above
+-- the usage row. Empty when neither is supplied, so 'render' drops the row.
+modelRow :: StatusInput -> Text
+modelRow input = T.intercalate " " (catMaybes [sessionSeg input, modelSeg input])
+
+-- First 8 chars of the session UUID: enough to tell sessions apart.
+sessionSeg :: StatusInput -> Maybe Text
+sessionSeg input = case T.take 8 . sanitize <$> siSession input of
+  Just s | not (T.null s) -> Just (withColor dim ("⌗ " <> s))
+  _ -> Nothing
+
+-- Badge colored by effort tier. Effort is present only when the model reports
+-- it; without it, the name shows alone in blue.
 modelSeg :: StatusInput -> Maybe Text
 modelSeg input = do
   name <- siModel input

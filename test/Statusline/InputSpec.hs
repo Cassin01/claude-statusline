@@ -10,6 +10,7 @@ spec = describe "parseInput" $ do
       parseInput
         "{\"workspace\":{\"current_dir\":\"/repo\"},\"transcript_path\":\"/t.jsonl\",\
         \\"model\":{\"display_name\":\"Opus\"},\"effort\":{\"level\":\"high\"},\
+        \\"session_id\":\"73274db9-a7d4-4a9e-b2ab-0ac957386c4d\",\
         \\"rate_limits\":{\"five_hour\":{\"used_percentage\":10,\"resets_at\":1735723800},\
         \\"seven_day\":{\"used_percentage\":5}},\"context_window\":{\"used_percentage\":30}}"
         `shouldBe` StatusInput
@@ -21,6 +22,7 @@ spec = describe "parseInput" $ do
           , siTranscript = Just "/t.jsonl"
           , siModel = Just "Opus"
           , siEffort = Just "high"
+          , siSession = Just "73274db9-a7d4-4a9e-b2ab-0ac957386c4d"
           }
     it "falls back from workspace.current_dir to cwd" $
       siCwd (parseInput "{\"cwd\":\"/fallback\"}") `shouldBe` Just "/fallback"
@@ -51,6 +53,8 @@ spec = describe "parseInput" $ do
     it "wrong-typed effort.level -> absent, parse survives" $
       siEffort (parseInput "{\"model\":{\"display_name\":\"Opus\"},\"effort\":{\"level\":7}}")
         `shouldBe` Nothing
+    it "wrong-typed session_id -> absent, parse survives" $
+      siSession (parseInput "{\"session_id\":123}") `shouldBe` Nothing
 
   describe "validEpoch" $ do
     it "non-negative integer accepted" $ validEpoch 1735723800 `shouldBe` Just 1735723800
